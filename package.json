@@ -1,0 +1,32 @@
+{
+  "name": "teamup-zk",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TeamUp ZK - anonymous team formation protocol using Semaphore zero-knowledge membership proofs",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "demo": "hardhat run scripts/demo.ts",
+    "smoke": "hardhat run scripts/00-smoke.ts",
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^4.0.0",
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^26.6.5",
+    "hardhat": "^3.19.0",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.6.1",
+    "@semaphore-protocol/contracts": "^4.14.3",
+    "@semaphore-protocol/group": "^4.14.3",
+    "@semaphore-protocol/identity": "^4.14.3",
+    "@semaphore-protocol/proof": "^4.14.3",
+    "chai": "^6.3.0",
+    "ethers": "^6.17.0"
+  }
+}

@@ -16,6 +16,8 @@ const { ethers } = connection;
 ///
 /// Optional env:
 ///   COURSE_MEMBERS  comma-separated identity commitments to enroll at deploy time.
+///   OWNER_ADDRESS   address that becomes the course owner (e.g. your MetaMask account).
+///                   On localhost it is also funded so it can send enroll transactions.
 async function main() {
   const networkName = connection.networkName;
   const [deployer] = await ethers.getSigners();
@@ -60,10 +62,27 @@ async function main() {
     console.log(`Enrolled course member commitment: ${commitment}`);
   }
 
+  // Optionally hand the course ownership to another account (e.g. a MetaMask account
+  // used in the frontend demo), so no deployer private key has to be imported.
+  const ownerAddress = (process.env.OWNER_ADDRESS ?? "").trim();
+  let courseOwner = deployer.address;
+  if (ownerAddress && ownerAddress.toLowerCase() !== deployer.address.toLowerCase()) {
+    if (networkName === "localhost" || networkName === "hardhat" || networkName === "default") {
+      const fundTx = await deployer.sendTransaction({ to: ownerAddress, value: ethers.parseEther("10") });
+      await fundTx.wait();
+      console.log(`Funded course owner ${ownerAddress} with 10 ETH -> ${fundTx.hash}`);
+    }
+    const transferTx = await registry.transferOwnership(ownerAddress);
+    await transferTx.wait();
+    console.log(`Transferred TeamRegistry ownership to ${ownerAddress} -> ${transferTx.hash}`);
+    courseOwner = ownerAddress;
+  }
+
   const addresses = {
     network: networkName,
     chainId: chainId.toString(),
     deployer: deployer.address,
+    owner: courseOwner,
     semaphoreVerifier: await verifier.getAddress(),
     poseidonT3: await poseidonT3.getAddress(),
     semaphore: await semaphore.getAddress(),

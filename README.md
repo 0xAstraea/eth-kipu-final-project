@@ -52,18 +52,17 @@ cd contracts
 npm run deploy:localhost
 npm run interact:localhost          # crea un equipo, postula, acepta, reclama y revela
 npm run export:abis                 # refresca los ABIs que usa el frontend
+npm run sync:frontend-env           # escribe frontend/.env.local con las direcciones
 
 # terminal 3 — frontend apuntando a localhost
 cd frontend
 npm install
-# copiar de contracts/deployments/localhost.json:
-#   teamRegistry -> NEXT_PUBLIC_REGISTRY_ADDRESS
-#   teamCredential -> NEXT_PUBLIC_CREDENTIAL_ADDRESS
-#   semaphore -> NEXT_PUBLIC_SEMAPHORE_ADDRESS
 npm run dev
 ```
 
-En el navegador, conectá MetaMask a `localhost:31337` (Chain ID 31337). Para la demo con dos roles, usá **dos navegadores/perfiles** con dos cuentas de Hardhat (una como docente/owner, otra como alumno).
+En el navegador, conectá MetaMask a `localhost:31337` (Chain ID 31337). Para la demo con dos roles, usá **dos navegadores/perfiles** con dos cuentas (una como docente/owner, otra como alumno).
+
+> **No hace falta importar la private key del deployer.** Por defecto el curso queda a nombre de la cuenta #0 de Hardhat; si querés usar tu propia cuenta de MetaMask como docente, poné su dirección en `contracts/.env` como `OWNER_ADDRESS` antes de desplegar: el script la financia con 10 ETH y le transfiere la propiedad del curso. Con un owner externo, hacé los pasos de owner (enrolar) desde el frontend, porque `interact.ts` solo puede firmar por cuentas locales de Hardhat. Detalle en [`contracts/deploy/README.md`](contracts/deploy/README.md).
 
 ## Cómo funciona, en una línea
 

@@ -5,7 +5,7 @@ import { addresses } from "@/lib/config";
 import { createTeamProof } from "@/lib/semaphore";
 import type { IdentityView } from "@/lib/types";
 import { useState } from "react";
-import { useReadContract, useWriteContract } from "wagmi";
+import { useAccount, useReadContract, usePublicClient, useWriteContract } from "wagmi";
 
 type Props = {
   identities: IdentityView[];
@@ -21,7 +21,9 @@ export function CreateTeamForm({ identities, courseCommitments, onCreated }: Pro
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
 
+  const { address } = useAccount();
   const { writeContractAsync, isPending } = useWriteContract();
+  const publicClient = usePublicClient();
   const { data: nextTeamId } = useReadContract({
     address: addresses.registry,
     abi: teamRegistryAbi,
@@ -51,12 +53,22 @@ export function CreateTeamForm({ identities, courseCommitments, onCreated }: Pro
         nextTeamId
       );
       setStatus("Awaiting wallet confirmation…");
-      await writeContractAsync({
+      if (publicClient && address) {
+        await publicClient.simulateContract({
+          account: address,
+          address: addresses.registry,
+          abi: teamRegistryAbi,
+          functionName: "createTeam",
+          args: [name, description, BigInt(maxMembers), 0n, proof]
+        });
+      }
+      const hash = await writeContractAsync({
         address: addresses.registry,
         abi: teamRegistryAbi,
         functionName: "createTeam",
         args: [name, description, BigInt(maxMembers), 0n, proof]
       });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
       setStatus("Team created.");
       setName("");
       setDescription("");

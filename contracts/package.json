@@ -16,6 +16,7 @@
     "deploy:sepolia": "hardhat run deploy/deploy.ts --network sepolia",
     "interact:sepolia": "hardhat run deploy/interact.ts --network sepolia",
     "export:abis": "node scripts/export-abis.mjs",
+    "sync:frontend-env": "node scripts/sync-frontend-env.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

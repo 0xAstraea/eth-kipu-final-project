@@ -14,6 +14,7 @@ Copy `.env.example` to `.env` and fill in:
 | `DEPLOYER_PRIVATE_KEY` | Private key of a funded Sepolia account |
 | `ETHERSCAN_API_KEY` | API key for contract verification |
 | `COURSE_MEMBERS` | Optional: comma-separated identity commitments to enroll now |
+| `OWNER_ADDRESS` | Optional: address that becomes the course owner instead of the deployer. On localhost it is also funded with 10 ETH. |
 
 `.env` is git-ignored. Do not commit it.
 
@@ -59,3 +60,45 @@ every step — copy them into the `README.md` "On-chain evidence" section.
 
 > The scripts generate random identities at runtime, so no usable secret is ever stored in
 > the repository. For local development use `npx hardhat run scripts/demo.ts` instead.
+
+## 5. Local demo (localhost + frontend)
+
+```bash
+# terminal 1
+npm run node
+
+# terminal 2 — fresh deployment owned by the deployer (Hardhat account #0)
+npm run deploy:localhost
+npm run interact:localhost
+npm run sync:frontend-env      # writes ../frontend/.env.local
+```
+
+`sync:frontend-env` reads `deployments/localhost.json` and writes `frontend/.env.local`,
+so the frontend addresses never have to be copied by hand.
+
+### Owning the protocol from your own MetaMask account
+
+Importing the deployer private key is not required. Set `OWNER_ADDRESS` to your own
+account before deploying:
+
+```bash
+# contracts/.env
+OWNER_ADDRESS=0xYourMetaMaskAccount
+```
+
+```bash
+npm run deploy:localhost       # funds OWNER_ADDRESS with 10 ETH and transfers ownership
+npm run sync:frontend-env
+```
+
+Setting `OWNER_ADDRESS` requires `contracts/.env`, which the config now loads automatically
+(`process.loadEnvFile`). Connect that account in the frontend: it is the course owner and can
+enroll identities.
+
+> `interact.ts` signs as the current owner and therefore only works when the owner is a local
+> Hardhat account. If you set `OWNER_ADDRESS` to an external account (e.g. MetaMask), run the
+> owner-only steps from the frontend instead.
+
+For the demo with two roles, use two browsers: one with the owner account (enrolls) and one
+with any other account (creates teams / applies).
+

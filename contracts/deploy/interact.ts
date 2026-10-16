@@ -26,10 +26,21 @@ async function main() {
   const state = JSON.parse(readFileSync(statePath, "utf8"));
   console.log(`Interacting with TeamRegistry at ${state.teamRegistry} on '${networkName}'`);
 
-  const [owner] = await ethers.getSigners();
   const registry: any = await ethers.getContractAt("TeamRegistry", state.teamRegistry);
   const credential: any = await ethers.getContractAt("TeamCredential", state.teamCredential);
   const semaphore: any = await ethers.getContractAt("Semaphore", state.semaphore);
+
+  // Use the current registry owner as the signer, so this script keeps working even if
+  // ownership was handed off (OWNER_ADDRESS) to another node account at deploy time.
+  const registryOwner = await registry.owner();
+  const signers = await ethers.getSigners();
+  const owner = signers.find((signer: any) => signer.address.toLowerCase() === registryOwner.toLowerCase());
+  if (!owner) {
+    throw new Error(
+      `The course owner ${registryOwner} is not a local Hardhat account, so interact.ts cannot sign for it. ` +
+        `Operate the owner-only steps from the frontend with that account instead (or unset OWNER_ADDRESS).`
+    );
+  }
 
   // This script rebuilds the off-chain group from the identities it enrolls, so it must
   // run on a fresh deployment (empty course group).

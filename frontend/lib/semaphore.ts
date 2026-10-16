@@ -1,4 +1,4 @@
-import { concat, encodeAbiParameters, keccak256, toBytes, type Address } from "viem";
+import { encodeAbiParameters, encodePacked, keccak256, type Address } from "viem";
 
 /** BN254 scalar field size; Semaphore messages must be reduced modulo this value. */
 export const SNARK_FIELD_SIZE =
@@ -22,7 +22,7 @@ export function claimCommitmentOf(claimAddress: Address, salt: bigint): `0x${str
 
 /** keccak256(abi.encodePacked(presentation, claimCommitment)) % SNARK_FIELD_SIZE. */
 export function joinMessageOf(presentation: string, claimCommitment: `0x${string}`): bigint {
-  return BigInt(keccak256(concat([toBytes(presentation), claimCommitment]))) % SNARK_FIELD_SIZE;
+  return BigInt(keccak256(encodePacked(["string", "bytes32"], [presentation, claimCommitment]))) % SNARK_FIELD_SIZE;
 }
 
 function toContractProof(proof: {

@@ -132,6 +132,7 @@ scripts/
   00-smoke.ts               Smoke test del pipeline Semaphore (deploy + proof)
   lib/protocol.ts           Helpers de deploy y generación de proofs
   export-abis.mjs           Exporta los ABIs a ../frontend/lib/abis (npm run export:abis)
+  sync-frontend-env.mjs     Escribe ../frontend/.env.local desde deployments/ (npm run sync:frontend-env)
 security/
   slither-report.md         Triage de findings de Slither
 ```

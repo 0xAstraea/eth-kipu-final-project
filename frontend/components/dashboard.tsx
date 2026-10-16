@@ -10,6 +10,7 @@ import { createIdentity } from "@/lib/identity";
 import type { IdentityView, StoredClaim, TeamView } from "@/lib/types";
 import { useLocalList } from "@/lib/use-local-list";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useAccount, useReadContract } from "wagmi";
 
 type Props = {
@@ -26,6 +27,7 @@ export function Dashboard({ teams, commitments, configured }: Props) {
   const claimsStore = useLocalList<StoredClaim>("teamup-zk-claims");
   const identities = identitiesStore.list;
   const claims = claimsStore.list;
+  const [identityError, setIdentityError] = useState("");
 
   const { data: owner } = useReadContract({
     address: addresses.registry,
@@ -38,7 +40,12 @@ export function Dashboard({ teams, commitments, configured }: Props) {
   const refresh = () => router.refresh();
 
   async function onCreate() {
-    identitiesStore.add(await createIdentity(`Identity ${identities.length + 1}`));
+    try {
+      setIdentityError("");
+      identitiesStore.add(await createIdentity(`Identity ${identities.length + 1}`));
+    } catch (err) {
+      setIdentityError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
@@ -50,12 +57,15 @@ export function Dashboard({ teams, commitments, configured }: Props) {
             Contracts not configured. Set NEXT_PUBLIC_* addresses in frontend/.env.local and restart.
           </span>
         )}
+        {identityError && <span className="text-xs text-red-400">Identity error: {identityError}</span>}
       </div>
 
       <IdentitiesPanel
         identities={identities}
         courseCommitments={commitments}
         isOwner={isOwner}
+        owner={owner as string | undefined}
+        connected={address}
         onCreate={onCreate}
         onDelete={(id) => identitiesStore.remove((identity) => identity.id === id)}
         onChanged={refresh}

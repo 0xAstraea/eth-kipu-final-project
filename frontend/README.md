@@ -26,7 +26,7 @@ Copiá `.env.example` a `.env.local` y completá las direcciones que imprime el 
 | `NEXT_PUBLIC_SEMAPHORE_ADDRESS` | Dirección de `Semaphore` | — |
 | `NEXT_PUBLIC_FROM_BLOCK` | Primer bloque a escanear para eventos | `0` |
 
-Para localhost, tomá las direcciones de `contracts/deployments/localhost.json`.
+Para localhost, generá las direcciones automáticamente desde `contracts/` con `npm run sync:frontend-env` (lee `contracts/deployments/localhost.json` y escribe este `.env.local`). También podés copiarlas a mano desde ese archivo.
 
 ## Correr
 

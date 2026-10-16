@@ -9,7 +9,7 @@ import { claimCommitmentOf, joinProof } from "@/lib/semaphore";
 import type { IdentityView, StoredClaim, TeamView } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { parseAbiItem, type Address } from "viem";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useReadContracts, useWriteContract } from "wagmi";
 
 const joinRequested = parseAbiItem(
   "event JoinRequested(uint256 indexed teamId, uint256 indexed nullifier, string presentation)"
@@ -48,6 +48,16 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
   const teamClaims = claims.filter((claim) => claim.teamId === team.id);
   const enrolled = identities.filter((identity) => courseCommitments.includes(identity.commitment));
 
+  const { data: applicationStates } = useReadContracts({
+    contracts: teamClaims.map((stored) => ({
+      address: addresses.registry,
+      abi: teamRegistryAbi,
+      functionName: "getApplication" as const,
+      args: [BigInt(stored.teamId), BigInt(stored.nullifier)] as const
+    })),
+    query: { enabled: teamClaims.length > 0 }
+  });
+
   useEffect(() => {
     if (!publicClient) return;
     let active = true;
@@ -73,6 +83,40 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
       active = false;
     };
   }, [publicClient, team.id]);
+
+  useEffect(() => {
+    if (!publicClient) return;
+    let active = true;
+    (async () => {
+      for (const stored of teamClaims) {
+        if (tokenMeta[stored.nullifier]) continue;
+        try {
+          const logs = await publicClient.getLogs({
+            address: addresses.credential,
+            event: credentialMinted,
+            args: { teamId: BigInt(stored.teamId), to: stored.claimAddress as Address },
+            fromBlock,
+            toBlock: "latest"
+          });
+          const last = logs.at(-1);
+          if (!last) continue;
+          const tokenId = last.args.tokenId as bigint;
+          const uri = (await publicClient.readContract({
+            address: addresses.credential,
+            abi: teamCredentialAbi,
+            functionName: "tokenURI",
+            args: [tokenId]
+          })) as string;
+          if (active) setTokenMeta((prev) => ({ ...prev, [stored.nullifier]: `${tokenId.toString()}|${uri}` }));
+        } catch {
+          // ignore: token metadata is decorative
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [publicClient, teamClaims, tokenMeta]);
 
   async function apply(event: React.FormEvent) {
     event.preventDefault();
@@ -100,12 +144,22 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
         claimCommitment
       );
       setBusy("Awaiting wallet confirmation…");
-      await writeContractAsync({
+      if (publicClient && address) {
+        await publicClient.simulateContract({
+          account: address,
+          address: addresses.registry,
+          abi: teamRegistryAbi,
+          functionName: "requestJoin",
+          args: [BigInt(team.id), presentation, claimCommitment, proof]
+        });
+      }
+      const hash = await writeContractAsync({
         address: addresses.registry,
         abi: teamRegistryAbi,
         functionName: "requestJoin",
         args: [BigInt(team.id), presentation, claimCommitment, proof]
       });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
       onAddClaim({
         teamId: team.id,
         nullifier: proof.nullifier.toString(),
@@ -126,12 +180,22 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
   async function accept(nullifier: string) {
     setError("");
     try {
-      await writeContractAsync({
+      if (publicClient && address) {
+        await publicClient.simulateContract({
+          account: address,
+          address: addresses.registry,
+          abi: teamRegistryAbi,
+          functionName: "acceptRequest",
+          args: [BigInt(team.id), BigInt(nullifier)]
+        });
+      }
+      const hash = await writeContractAsync({
         address: addresses.registry,
         abi: teamRegistryAbi,
         functionName: "acceptRequest",
         args: [BigInt(team.id), BigInt(nullifier)]
       });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -141,12 +205,22 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
   async function reveal() {
     setError("");
     try {
-      await writeContractAsync({
+      if (publicClient && address) {
+        await publicClient.simulateContract({
+          account: address,
+          address: addresses.registry,
+          abi: teamRegistryAbi,
+          functionName: "reveal",
+          args: [BigInt(team.id)]
+        });
+      }
+      const hash = await writeContractAsync({
         address: addresses.registry,
         abi: teamRegistryAbi,
         functionName: "reveal",
         args: [BigInt(team.id)]
       });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -157,13 +231,29 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
     setError("");
     try {
       setBusy("Claiming credential…");
-      await writeContractAsync({
+      const claimArgs = [
+        BigInt(stored.teamId),
+        BigInt(stored.nullifier),
+        stored.claimAddress as Address,
+        BigInt(stored.salt)
+      ] as const;
+      if (publicClient && address) {
+        await publicClient.simulateContract({
+          account: address,
+          address: addresses.registry,
+          abi: teamRegistryAbi,
+          functionName: "claimCredential",
+          args: claimArgs
+        });
+      }
+      const hash = await writeContractAsync({
         address: addresses.registry,
         abi: teamRegistryAbi,
         functionName: "claimCredential",
-        args: [BigInt(stored.teamId), BigInt(stored.nullifier), stored.claimAddress as Address, BigInt(stored.salt)]
+        args: claimArgs
       });
       if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
         const logs = await publicClient.getLogs({
           address: addresses.credential,
           event: credentialMinted,
@@ -301,18 +391,28 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
       {teamClaims.length > 0 && (
         <div className="mt-4 space-y-2 border-t border-neutral-800 pt-4">
           <p className="text-xs uppercase tracking-wide text-neutral-500">My claims</p>
-          {teamClaims.map((stored) => {
+          {teamClaims.map((stored, index) => {
             const meta = tokenMeta[stored.nullifier];
+            const state = applicationStates?.[index];
+            const onChain = state?.status === "success" ? state.result : undefined;
+            const accepted = onChain ? onChain[1] : team.members.includes(stored.nullifier);
+            const claimed = onChain ? onChain[2] : false;
             return (
               <div key={stored.nullifier} className="rounded-md bg-neutral-900/60 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-xs text-neutral-400">{formatBig(stored.nullifier, 8)}</span>
-                  <button
-                    onClick={() => claim(stored)}
-                    className="rounded-md border border-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-900"
-                  >
-                    Claim credential
-                  </button>
+                  {claimed ? (
+                    <span className="text-xs text-emerald-400">credential claimed</span>
+                  ) : accepted ? (
+                    <button
+                      onClick={() => claim(stored)}
+                      className="rounded-md border border-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-900"
+                    >
+                      Claim credential
+                    </button>
+                  ) : (
+                    <span className="text-xs text-neutral-500">waiting for admin acceptance</span>
+                  )}
                 </div>
                 {meta && (
                   <p className="mt-2 break-all text-xs text-emerald-400">

@@ -10,8 +10,12 @@
     "coverage": "hardhat test --coverage",
     "demo": "hardhat run scripts/demo.ts",
     "smoke": "hardhat run scripts/00-smoke.ts",
+    "node": "hardhat node",
+    "deploy:localhost": "hardhat run deploy/deploy.ts --network localhost",
+    "interact:localhost": "hardhat run deploy/interact.ts --network localhost",
     "deploy:sepolia": "hardhat run deploy/deploy.ts --network sepolia",
     "interact:sepolia": "hardhat run deploy/interact.ts --network sepolia",
+    "export:abis": "node scripts/export-abis.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

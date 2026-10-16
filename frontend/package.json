@@ -1,0 +1,34 @@
+{
+  "name": "teamup-zk-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TeamUp ZK frontend - browser wallets, anonymous team formation and in-browser Semaphore zero-knowledge proofs",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@semaphore-protocol/group": "^4.14.3",
+    "@semaphore-protocol/identity": "^4.14.3",
+    "@semaphore-protocol/proof": "^4.14.3",
+    "@tanstack/react-query": "^5.104.3",
+    "next": "^16.4.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "viem": "^2.57.7",
+    "wagmi": "^3.7.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.4.2",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.9.0"
+  }
+}

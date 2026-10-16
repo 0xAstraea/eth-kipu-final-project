@@ -1,11 +1,30 @@
+# Dependencies
 node_modules/
+
+# Hardhat build outputs
 artifacts/
 cache/
 typechain-types/
-deployments/
-*.log
-.env
-.DS_Store
-
-types/
 coverage/
+types/
+deployments/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db

@@ -50,8 +50,8 @@ npm run build && npm start
 3. **Enrolar** la identidad en el curso (solo la cuenta **owner** puede).
 4. **Crear equipo** (con proof ZK scope = teamId).
 5. **Postularse** (proof ZK scope = teamId, mensaje = `keccak256(presentation, claimCommitment)`); el `claimCommitment` fija el destinatario del NFT.
-6. El **admin** del equipo acepta por nullifier y **revela**.
-7. **Reclamar la credencial** (NFT a la dirección elegida) y ver su metadata on-chain.
+6. El **admin** del equipo acepta postulaciones por nullifier; con el equipo completo, **cualquiera revela** el equipo (congela el plantel y guarda el `rosterRoot`).
+7. **Reclamar la credencial** (posible recién tras la revelación; NFT a la dirección elegida) y ver su metadata on-chain.
 
 Para una demo con dos roles, usá dos navegadores/perfiles: uno con la cuenta owner (docente) y otro con una cuenta distinta (alumno).
 

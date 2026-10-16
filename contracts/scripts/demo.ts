@@ -108,20 +108,13 @@ async function main() {
   }
 
   // ------------------------------------------------------------------
-  step("MINUTE 5: Alice accepts Bob's nullifier and Bob claims his credential");
+  step("MINUTE 5: Alice accepts Bob's nullifier");
   // ------------------------------------------------------------------
   await registry.connect(actors.alice).acceptRequest(teamId, joinProof.nullifier);
   console.log("JoinAccepted -> team members:", (await registry.getTeam(teamId)).membersCount.toString());
 
-  await registry
-    .connect(actors.throwaway) // gas can be paid by anyone
-    .claimCredential(teamId, joinProof.nullifier, claimAddress, 42n);
-
-  console.log("CredentialClaimed -> NFT owner:", await credential.ownerOf(1n));
-  console.log("  (the throwaway address chosen by Bob, NOT the application sender)");
-
   // ------------------------------------------------------------------
-  step("MINUTE 5b: Charlie joins, the team fills up and can be revealed");
+  step("MINUTE 5b: Charlie joins and the team fills up");
   // ------------------------------------------------------------------
   const charlieClaim = claimCommitmentOf(actors.throwaway.address, 7n);
   const charliePresentation = "Frontend y documentacion";
@@ -130,14 +123,28 @@ async function main() {
   await registry.connect(actors.alice).acceptRequest(teamId, charlieProof.nullifier);
   console.log("Team is now full:", (await registry.getTeam(teamId)).membersCount.toString(), "/ 3");
 
+  // ------------------------------------------------------------------
+  step("MINUTE 5c: with the team full, anyone reveals it (roster is committed)");
+  // ------------------------------------------------------------------
   await registry.connect(actors.alice).reveal(teamId);
   const members = await registry.getTeamMembers(teamId);
   console.log("TeamRevealed -> nullifiers (never addresses):");
   for (const nullifier of members) {
     console.log("  -", short(nullifier));
   }
+  console.log("rosterRoot (commitment over sorted nullifiers):", await registry.getTeamRosterRoot(teamId));
 
-  console.log("\nDEMO COMPLETE - see events in the logs and `npx hardhat test` (26 passing)");
+  // ------------------------------------------------------------------
+  step("MINUTE 5d: Bob claims his credential (only possible after reveal)");
+  // ------------------------------------------------------------------
+  await registry
+    .connect(actors.throwaway) // gas can be paid by anyone
+    .claimCredential(teamId, joinProof.nullifier, claimAddress, 42n);
+
+  console.log("CredentialClaimed -> NFT owner:", await credential.ownerOf(1n));
+  console.log("  (the throwaway address chosen by Bob, NOT the application sender)");
+
+  console.log("\nDEMO COMPLETE - see events in the logs and `npx hardhat test` (28 passing)");
 }
 
 main()

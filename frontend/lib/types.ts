@@ -6,6 +6,7 @@ export type TeamView = {
   maxMembers: string;
   revealAtBlock: string;
   isRevealed: boolean;
+  rosterRoot: string;
   members: string[];
 };
 

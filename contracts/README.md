@@ -37,8 +37,8 @@ TeamUp ZK reemplaza la planilla por un protocolo donde:
   │  - createTeam()      → admin + miembros (por nullifier)│
   │  - requestJoin()     → postulación por nullifier       │
   │  - acceptRequest()   → decisión del admin              │
-  │  - claimCredential() → NFT vía commit-reveal           │
-  │  - reveal()          → cierre (cupo o nº de bloque)    │
+  │  - claimCredential() → NFT (requiere reveal)           │
+  │  - reveal()         → cierre + rosterRoot (cupo/bloque)│
   └───────────────────────────┬───────────────────────────┘
                               │ mint()
                               ▼
@@ -60,8 +60,8 @@ Si heredara, cualquiera podría llamar `addMember` directamente y bypassear el `
 | 3 | Bob | `requestJoin(teamId, presentation, claimCommitment, proof)` | Postulación registrada **por nullifier**; carta + commitment autenticados dentro del proof |
 | 4 | Eve (no es del curso) | `requestJoin(...)` | Revert: `Semaphore__InvalidProof` |
 | 5 | Alice | `acceptRequest(teamId, nullifier)` | Nullifier marcado como miembro |
-| 6 | Bob | `claimCredential(teamId, nullifier, claimAddress, salt)` | NFT minteado a `claimAddress` (puede ser desechable) |
-| 7 | Alguien | `reveal(teamId)` | Requiere cupo lleno o `block.number >= revealAtBlock`; emite `TeamRevealed` con los nullifiers |
+| 6 | Alguien | `reveal(teamId)` | Requiere cupo lleno o `block.number >= revealAtBlock`; guarda `rosterRoot = keccak256(sorted nullifiers)` y emite `TeamRevealed` |
+| 7 | Bob | `claimCredential(teamId, nullifier, claimAddress, salt)` | Requiere equipo ya revelado; NFT minteado a `claimAddress` (puede ser desechable) |
 
 ### Por qué no se "doxxea" a nadie
 
@@ -87,14 +87,14 @@ npx hardhat compile
 ## Tests y coverage
 
 ```bash
-# suite completa (26 tests)
+# suite completa (28 tests)
 npx hardhat test
 
 # coverage con la herramienta built-in de Hardhat 3
 npx hardhat test --coverage
 ```
 
-Resultado del coverage sobre el código propio: **85.85% de líneas y 86.96% de statements** (ambas por encima del 40% exigido). El reporte HTML queda en `coverage/html`.
+Resultado del coverage sobre el código propio: **87.90% de líneas y 89.05% de statements** (ambas por encima del 40% exigido). El reporte HTML queda en `coverage/html`.
 
 ## Análisis estático (Slither)
 
@@ -120,7 +120,7 @@ contracts/
   TeamCredential.sol        ERC721 credencial (OpenZeppelin)
   interfaces/ITeamCredential.sol  Interfaz entre registry y credencial
 test/
-  TeamRegistry.test.ts      21 tests: sybil, anti-doxxeo, commit-reveal, reveal
+  TeamRegistry.test.ts      23 tests: sybil, anti-doxxeo, commit-reveal, reveal, rosterRoot
   TeamCredential.test.ts    5 tests: permisos, metadata, flujo completo
   helpers/setup.ts          Fixtures + generación de proofs ZK off-chain
 deploy/
@@ -170,8 +170,8 @@ npx hardhat verify --network sepolia <TEAM_REGISTRY> <SEMAPHORE_ADDRESS>
 | createTeam | `0x…` |
 | requestJoin | `0x…` |
 | acceptRequest | `0x…` |
-| claimCredential | `0x…` |
 | reveal | `0x…` |
+| claimCredential | `0x…` |
 
 
 ## Decisiones de diseño
@@ -179,6 +179,7 @@ npx hardhat verify --network sepolia <TEAM_REGISTRY> <SEMAPHORE_ADDRESS>
 - **Reloj por bloque, no por timestamp.** `revealAtBlock` usa `block.number` en vez de timestamps: es más barato de verificar, no depende de la honestidad del validador y es determinista en tests.
 - **Firmas ECDSA no, ZK sí.** En un curso chico el docente es un emisor confiable, pero el protocolo igualmente le exige al alumno *demostrar* membresía sin exponer su identidad: la confianza mínima necesaria se traslada al gatekeeper (docente) y todo lo demás es criptografía.
 - **Commit-reveal en vez del circuito de "ownership" de Semaphore.** Ese circuito solo existe en el repo experimental de PSE (no auditado); `keccak256(address, salt)` resuelve el mismo problema sin depender de código experimental.
+- **`reveal` finaliza el equipo y ancla el plantel.** Además de congelar la composición, `reveal` guarda `rosterRoot = keccak256` de los nullifiers **ordenados**: un compromiso reproducible desde un solo hash (independiente del orden de aceptación). Y `claimCredential` exige que el equipo esté revelado, así la credencial certifica pertenencia a un equipo ya finalizado. La revelación es *permissionless* (cualquiera puede dispararla si se cumple la condición), por lo que no bloquea a los miembros.
 
 ### Limitaciones conocidas (honestidad por diseño)
 
@@ -205,4 +206,4 @@ npx hardhat verify --network sepolia <TEAM_REGISTRY> <SEMAPHORE_ADDRESS>
 - Errores custom (sin strings) y eventos para cada transición de estado.
 - `Semaphore`, `courseGroupId` y `SNARK_FIELD_SIZE` son `immutable`/`constant`; `unchecked` en incrementos que no pueden desbordar.
 - OZ v5: `Ownable`, `ERC721`, `ReentrancyGuard`. Sin dependencias de librerías externas más allá de Semaphore/OZ.
-- **Tests:** miembro entra; no-miembro revert; doble postulación revert; mensaje alterado revert; claim con salt incorrecto revert; claim antes de aceptación revert; reveal prematuro revert; equipo lleno revert; NFT a address desechable y no al sender.
+- **Tests:** miembro entra; no-miembro revert; doble postulación revert; mensaje alterado revert; claim con salt incorrecto revert; claim antes de aceptación revert; claim antes de revelar revert; reveal prematuro revert; equipo lleno revert; `rosterRoot` determinista; NFT a address desechable y no al sender.

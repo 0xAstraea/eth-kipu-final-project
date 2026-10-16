@@ -24,7 +24,7 @@ Un defecto de la planilla compartida: no verifica nada, no impide postularse dos
 ```bash
 cd contracts
 npm install
-npx hardhat test          # 26 tests
+npx hardhat test          # 28 tests
 npx hardhat test --coverage
 ```
 

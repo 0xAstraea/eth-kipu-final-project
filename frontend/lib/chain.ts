@@ -10,6 +10,7 @@ export type Team = {
   maxMembers: bigint;
   revealAtBlock: bigint;
   isRevealed: boolean;
+  rosterRoot: `0x${string}`;
   members: bigint[];
 };
 
@@ -61,6 +62,13 @@ export async function getTeams(): Promise<Team[]> {
         args: [id]
       })) as bigint[];
 
+      const rosterRoot = (await client.readContract({
+        address: addresses.registry,
+        abi: teamRegistryAbi,
+        functionName: "getTeamRosterRoot",
+        args: [id]
+      })) as `0x${string}`;
+
       teams.push({
         id,
         admin: admin as `0x${string}`,
@@ -69,6 +77,7 @@ export async function getTeams(): Promise<Team[]> {
         maxMembers,
         revealAtBlock,
         isRevealed,
+        rosterRoot,
         members
       });
     }

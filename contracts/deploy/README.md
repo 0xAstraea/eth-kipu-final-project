@@ -54,9 +54,10 @@ npx hardhat run deploy/interact.ts --network sepolia
 ```
 
 Runs the full flow on-chain with **freshly generated** identities (nothing hardcoded):
-enrol three members, create a team with a ZK proof, apply anonymously, accept, claim the
-credential to a throwaway address, and reveal the team. It prints the transaction hash of
-every step — copy them into the `README.md` "On-chain evidence" section.
+enrol three members, create a team with a ZK proof, apply anonymously, accept, fill the
+team, reveal it (which stores the roster commitment), and finally claim the credential to a
+throwaway address. It prints the transaction hash of every step — copy them into the
+`README.md` "On-chain evidence" section.
 
 > The scripts generate random identities at runtime, so no usable secret is ever stored in
 > the repository. For local development use `npx hardhat run scripts/demo.ts` instead.

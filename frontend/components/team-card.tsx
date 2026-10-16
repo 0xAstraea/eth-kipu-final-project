@@ -296,8 +296,13 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
             {team.maxMembers} members
             {team.isRevealed ? " · revealed" : ""}
           </p>
+          {team.isRevealed && (
+            <p className="mt-1 text-xs text-neutral-500">
+              roster root <span className="font-mono">{shorten(team.rosterRoot, 8)}</span>
+            </p>
+          )}
         </div>
-        {isAdmin && !team.isRevealed && (
+        {!team.isRevealed && (isAdmin || team.members.length >= Number(team.maxMembers)) && (
           <button
             onClick={reveal}
             className="rounded-md border border-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-900"
@@ -403,13 +408,15 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
                   <span className="font-mono text-xs text-neutral-400">{formatBig(stored.nullifier, 8)}</span>
                   {claimed ? (
                     <span className="text-xs text-emerald-400">credential claimed</span>
-                  ) : accepted ? (
+                  ) : accepted && team.isRevealed ? (
                     <button
                       onClick={() => claim(stored)}
                       className="rounded-md border border-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-900"
                     >
                       Claim credential
                     </button>
+                  ) : accepted ? (
+                    <span className="text-xs text-neutral-500">waiting for team reveal</span>
                   ) : (
                     <span className="text-xs text-neutral-500">waiting for admin acceptance</span>
                   )}

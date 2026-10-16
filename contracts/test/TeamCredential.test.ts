@@ -54,6 +54,7 @@ describe("TeamCredential", function () {
     const joinProof = await makeJoinProof(d.identities.bob, group, teamId, "hello", claimCommitment);
     await d.registry.connect(d.signers.bob).requestJoin(teamId, "hello", claimCommitment, joinProof);
     await d.registry.connect(d.signers.alice).acceptRequest(teamId, joinProof.nullifier);
+    await d.registry.connect(d.signers.alice).reveal(teamId);
 
     await d.registry.connect(d.signers.throwaway).claimCredential(teamId, joinProof.nullifier, claimAddress, SALT);
 

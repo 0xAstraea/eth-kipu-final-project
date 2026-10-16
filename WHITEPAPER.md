@@ -104,11 +104,13 @@ Semaphore` y `TeamRegistry ↔ TeamCredential`.
    `message = keccak256(presentation, claimCommitment)`, y llama `requestJoin`. El contrato
    guarda la postulación **indexada por el nullifier**; no almacena `msg.sender`.
 4. **Aceptación.** El administrador del equipo llama `acceptRequest(teamId, nullifier)`.
-5. **Reclamo de credencial.** Con `claimAddress` y `salt`, el contrato verifica
-   `keccak256(claimAddress, salt)` contra el compromiso y mintea el NFT a `claimAddress`.
-   Puede pagar el gas cualquiera.
-6. **Revelación.** Cuando el equipo está completo, o al pasar `revealAtBlock`, se llama
-   `reveal` y se emite la composición como lista de nullifiers.
+5. **Revelación.** Cuando el equipo está completo, o al pasar `revealAtBlock`, se llama
+   `reveal`: se congela la composición, se emite la lista **ordenada** de nullifiers y se guarda
+   `rosterRoot = keccak256(sortedNullifiers)`, un compromiso verificable del plantel.
+6. **Reclamo de credencial.** Recién tras la revelación, con `claimAddress` y `salt`, el
+   contrato verifica `keccak256(claimAddress, salt)` contra el compromiso y mintea el NFT a
+   `claimAddress`. Puede pagar el gas cualquiera. La credencial certifica pertenencia a un
+   equipo ya finalizado, no a uno que todavía podría cambiar.
 
 ## 6. Diseño criptográfico
 
@@ -155,11 +157,12 @@ Semaphore` y `TeamRegistry ↔ TeamCredential`.
 
 ## 9. Testing y análisis estático
 
-- **26 tests** de Mocha que cubren el flujo principal y todos los reverts relevantes:
+- **28 tests** de Mocha que cubren el flujo principal y todos los reverts relevantes:
   no-miembro, doble postulación, mensaje alterado, claim con salt incorrecto, claim antes de
-  aceptar, reveal prematuro, equipo lleno, y que la postulación nunca queda ligada al emisor.
-- **Coverage (`npx hardhat test --coverage`)**: 83% de líneas/statements, 100% de ramas y
-  funciones sobre el código propio.
+  aceptar, claim antes de revelar, reveal prematuro, equipo lleno, root del plantel
+  determinista, y que la postulación nunca queda ligada al emisor.
+- **Coverage (`npx hardhat test --coverage`)**: 87.9% de líneas y 89.1% de statements sobre el código
+  propio (`solidity-coverage` no desglosa ramas ni funciones).
 - **Slither** sobre `TeamRegistry` y `TeamCredential` con las dependencias externas excluidas.
 
 ## 10. Limitaciones del MVP

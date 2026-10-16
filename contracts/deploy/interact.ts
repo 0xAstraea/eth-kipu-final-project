@@ -92,18 +92,12 @@ async function main() {
   await bobTx.wait();
   console.log(`requestJoin (bob) -> ${bobTx.hash}`);
 
-  // 5. Alice accepts Bob and Bob's credential is claimed to a throwaway address.
+  // 5. Alice accepts Bob.
   const acceptTx = await registry.connect(owner).acceptRequest(teamId, bobProof.nullifier);
   await acceptTx.wait();
   console.log(`acceptRequest (bob) -> ${acceptTx.hash}`);
 
-  const claimTx = await registry
-    .connect(owner)
-    .claimCredential(teamId, bobProof.nullifier, bobClaimAddress, bobSalt);
-  await claimTx.wait();
-  console.log(`claimCredential (bob) -> ${claimTx.hash} (owner of NFT: ${bobClaimAddress})`);
-
-  // 6. Charlie applies, is accepted, the team fills up and is revealed.
+  // 6. Charlie applies and is accepted; the team now fills up (alice + bob + charlie).
   const charliePresentation = "Charlie: zero-knowledge intern";
   const charlieSalt = BigInt("0x" + crypto.randomUUID().replace(/-/g, ""));
   const charlieClaimAddress = ethers.Wallet.createRandom().address;
@@ -120,9 +114,25 @@ async function main() {
   await charlieTx.wait();
   const charlieAccept = await registry.connect(owner).acceptRequest(teamId, charlieProof.nullifier);
   await charlieAccept.wait();
+  console.log(`requestJoin+accept (charlie) -> ${charlieTx.hash}, ${charlieAccept.hash}`);
+
+  // 7. With the team full, anyone reveals it: the roster is frozen and committed.
   const revealTx = await registry.connect(owner).reveal(teamId);
   await revealTx.wait();
-  console.log(`requestJoin+accept+reveal (charlie) -> ${charlieTx.hash}, ${charlieAccept.hash}, ${revealTx.hash}`);
+  console.log(`reveal #${teamId} -> ${revealTx.hash} (rosterRoot: ${await registry.getTeamRosterRoot(teamId)})`);
+
+  // 8. Credentials can only be claimed once the team is revealed.
+  const claimTx = await registry
+    .connect(owner)
+    .claimCredential(teamId, bobProof.nullifier, bobClaimAddress, bobSalt);
+  await claimTx.wait();
+  console.log(`claimCredential (bob) -> ${claimTx.hash} (owner of NFT: ${bobClaimAddress})`);
+
+  const charlieClaim = await registry
+    .connect(owner)
+    .claimCredential(teamId, charlieProof.nullifier, charlieClaimAddress, charlieSalt);
+  await charlieClaim.wait();
+  console.log(`claimCredential (charlie) -> ${charlieClaim.hash} (owner of NFT: ${charlieClaimAddress})`);
 
   const tokenOwner = await credential.ownerOf(1);
   console.log(`\nTeam #${teamId} revealed. Credential #1 owner: ${tokenOwner}`);

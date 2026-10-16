@@ -40,6 +40,8 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
         uint256 maxMembers;
         uint256 revealAtBlock;
         bool isRevealed;
+        /// @dev commitment over the sorted member nullifiers, set at reveal time.
+        bytes32 rosterRoot;
         uint256[] memberNullifiers;
     }
 
@@ -107,6 +109,9 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
     /// @notice Thrown when a team is revealed before it is full and before the deadline block.
     /// @param teamId Id of the team whose reveal conditions are not met.
     error RevealConditionsNotMet(uint256 teamId);
+    /// @notice Thrown when claiming a credential for a team that has not been revealed yet.
+    /// @param teamId Id of the team that is not revealed yet.
+    error TeamNotRevealed(uint256 teamId);
     /// @notice Thrown when an application already exists for the given nullifier.
     /// @param teamId Id of the team.
     /// @param nullifier Applicant nullifier that already applied.
@@ -270,12 +275,19 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
     /// @notice Claims the credential NFT for an accepted application.
     /// @dev Anyone may submit the transaction (gas can be paid by a third party); the
     /// NFT always goes to the claimAddress fixed in the commitment. The claimAddress
-    /// can be a throwaway address to keep the claimant's main address private.
+    /// can be a throwaway address to keep the claimant's main address private. Claims
+    /// are only possible once the team has been revealed, so the credential always
+    /// attests membership in a finalized (frozen) team.
     function claimCredential(uint256 teamId, uint256 nullifier, address claimAddress, uint256 salt)
         external
         nonReentrant
     {
         if (credential == address(0)) revert CredentialNotSet();
+
+        Team storage team = _teams[teamId];
+
+        if (team.maxMembers == 0) revert TeamDoesNotExist(teamId);
+        if (!team.isRevealed) revert TeamNotRevealed(teamId);
 
         Application storage application = _applications[teamId][nullifier];
 
@@ -298,6 +310,8 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
     /// @notice Reveals the final team composition. Requires the team to be full or the
     /// reveal deadline to have passed.
     /// @dev Reveals nullifiers only; member addresses are never exposed by the contract.
+    /// Also stores a commitment over the sorted nullifiers so the roster can be verified
+    /// from a single hash regardless of the order in which members were accepted.
     function reveal(uint256 teamId) external {
         Team storage team = _teams[teamId];
 
@@ -312,7 +326,35 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
 
         team.isRevealed = true;
 
-        emit TeamRevealed(teamId, team.memberNullifiers);
+        uint256[] memory sortedMembers = team.memberNullifiers;
+        _sort(sortedMembers);
+        team.rosterRoot = keccak256(abi.encodePacked(sortedMembers));
+
+        emit TeamRevealed(teamId, sortedMembers);
+    }
+
+    /// @dev Sorts a memory array of nullifiers in ascending order (insertion sort).
+    /// Arrays are small (at most maxMembers), so the O(n^2) cost is negligible.
+    function _sort(uint256[] memory values) private pure {
+        uint256 length = values.length;
+
+        for (uint256 i = 1; i < length; ) {
+            uint256 key = values[i];
+            uint256 j = i;
+
+            while (j > 0 && values[j - 1] > key) {
+                values[j] = values[j - 1];
+                unchecked {
+                    --j;
+                }
+            }
+
+            values[j] = key;
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /// @dev Calls TeamCredential.mint through a typed interface; revert reasons from the
@@ -352,6 +394,12 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
     /// @notice Returns the nullifiers of the team members.
     function getTeamMembers(uint256 teamId) external view returns (uint256[] memory) {
         return _teams[teamId].memberNullifiers;
+    }
+
+    /// @notice Returns the roster commitment of a team, set when the team is revealed.
+    /// @dev Equal to keccak256(abi.encodePacked(sorted member nullifiers)); zero until reveal.
+    function getTeamRosterRoot(uint256 teamId) external view returns (bytes32) {
+        return _teams[teamId].rosterRoot;
     }
 
     /// @notice Returns an application by team and nullifier.

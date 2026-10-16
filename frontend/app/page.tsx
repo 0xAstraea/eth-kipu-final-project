@@ -16,6 +16,7 @@ export default async function Home() {
     maxMembers: team.maxMembers.toString(),
     revealAtBlock: team.revealAtBlock.toString(),
     isRevealed: team.isRevealed,
+    rosterRoot: team.rosterRoot,
     members: team.members.map((m) => m.toString())
   }));
 

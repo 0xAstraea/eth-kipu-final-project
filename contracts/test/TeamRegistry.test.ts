@@ -53,6 +53,12 @@ async function applyAsBob(teamId: bigint, claimCommitment: string, sender: any) 
   return proof.nullifier;
 }
 
+/// Reveals a team through the deadline path (mines past revealAtBlock).
+async function revealAfterDeadline(teamId: bigint) {
+  await networkHelpers.mine(11);
+  await d.registry.connect(d.signers.alice).reveal(teamId);
+}
+
 describe("TeamRegistry", function () {
   describe("course membership", function () {
     it("lets the course owner add members", async function () {
@@ -181,7 +187,7 @@ describe("TeamRegistry", function () {
     });
 
     it("never binds the application to the sending address", async function () {
-      const { teamId } = await createTeamAsAlice();
+      const { teamId } = await createTeamAsAlice(2); // alice + bob fills the team
 
       // Bob's proof is submitted from charlie's signer: the tx sender is irrelevant.
       const claimCommitment = claimCommitmentOf(d.signers.throwaway.address, SALT);
@@ -192,6 +198,11 @@ describe("TeamRegistry", function () {
         .to.emit(d.registry, "JoinAccepted")
         .withArgs(teamId, nullifier);
 
+      // The team is full, so it can be revealed and the credential claimed.
+      await d.registry.connect(d.signers.alice).reveal(teamId);
+
+      const tokenId = await d.credential.nextTokenId();
+
       // Bob claims to a throwaway address: neither charlie (the requestJoin sender)
       // nor any other address can intercept or be associated with the application.
       await expect(
@@ -200,8 +211,8 @@ describe("TeamRegistry", function () {
         .to.emit(d.registry, "CredentialClaimed")
         .withArgs(teamId, nullifier, d.signers.throwaway.address);
 
-      expect(await d.credential.ownerOf(1n)).to.equal(d.signers.throwaway.address);
-      expect(await d.credential.teamOf(1n)).to.equal(teamId);
+      expect(await d.credential.ownerOf(tokenId)).to.equal(d.signers.throwaway.address);
+      expect(await d.credential.teamOf(tokenId)).to.equal(teamId);
     });
 
     it("rejects applications to a full team", async function () {
@@ -241,11 +252,28 @@ describe("TeamRegistry", function () {
   });
 
   describe("claimCredential", function () {
-    it("rejects claims before acceptance", async function () {
-      const { teamId } = await createTeamAsAlice();
+    it("rejects claims before the team is revealed", async function () {
+      const { teamId } = await createTeamAsAlice(2, 0n); // alice + bob can fill it
 
       const claimCommitment = claimCommitmentOf(d.signers.throwaway.address, SALT);
       const nullifier = await applyAsBob(teamId, claimCommitment, d.signers.bob);
+      await d.registry.connect(d.signers.alice).acceptRequest(teamId, nullifier);
+
+      // Full but not revealed: the credential is not mintable yet.
+      await expect(
+        d.registry.connect(d.signers.bob).claimCredential(teamId, nullifier, d.signers.throwaway.address, SALT)
+      ).to.be.revertedWithCustomError(d.registry, "TeamNotRevealed");
+    });
+
+    it("rejects claims before acceptance", async function () {
+      const deadline = BigInt(await ethers.provider.getBlockNumber()) + 10n;
+      const { teamId } = await createTeamAsAlice(3, deadline);
+
+      const claimCommitment = claimCommitmentOf(d.signers.throwaway.address, SALT);
+      const nullifier = await applyAsBob(teamId, claimCommitment, d.signers.bob);
+
+      // Reveal through the deadline path while bob is still unaccepted.
+      await revealAfterDeadline(teamId);
 
       await expect(
         d.registry.connect(d.signers.bob).claimCredential(teamId, nullifier, d.signers.bob.address, SALT)
@@ -253,11 +281,13 @@ describe("TeamRegistry", function () {
     });
 
     it("rejects a claim with the wrong salt", async function () {
-      const { teamId } = await createTeamAsAlice();
+      const deadline = BigInt(await ethers.provider.getBlockNumber()) + 10n;
+      const { teamId } = await createTeamAsAlice(3, deadline);
 
       const claimCommitment = claimCommitmentOf(d.signers.throwaway.address, SALT);
       const nullifier = await applyAsBob(teamId, claimCommitment, d.signers.bob);
       await d.registry.connect(d.signers.alice).acceptRequest(teamId, nullifier);
+      await revealAfterDeadline(teamId);
 
       await expect(
         d.registry.connect(d.signers.bob).claimCredential(teamId, nullifier, d.signers.throwaway.address, SALT + 1n)
@@ -265,11 +295,13 @@ describe("TeamRegistry", function () {
     });
 
     it("rejects a claim to an address not fixed in the commitment", async function () {
-      const { teamId } = await createTeamAsAlice();
+      const deadline = BigInt(await ethers.provider.getBlockNumber()) + 10n;
+      const { teamId } = await createTeamAsAlice(3, deadline);
 
       const claimCommitment = claimCommitmentOf(d.signers.throwaway.address, SALT);
       const nullifier = await applyAsBob(teamId, claimCommitment, d.signers.bob);
       await d.registry.connect(d.signers.alice).acceptRequest(teamId, nullifier);
+      await revealAfterDeadline(teamId);
 
       // Correct salt but different address: the commitment does not match.
       await expect(
@@ -278,11 +310,14 @@ describe("TeamRegistry", function () {
     });
 
     it("mints the credential once and rejects a second claim", async function () {
-      const { teamId } = await createTeamAsAlice();
+      const { teamId } = await createTeamAsAlice(2, 0n);
 
       const claimCommitment = claimCommitmentOf(d.signers.throwaway.address, SALT);
       const nullifier = await applyAsBob(teamId, claimCommitment, d.signers.bob);
       await d.registry.connect(d.signers.alice).acceptRequest(teamId, nullifier);
+      await d.registry.connect(d.signers.alice).reveal(teamId);
+
+      const tokenId = await d.credential.nextTokenId();
 
       await expect(
         d.registry.connect(d.signers.bob).claimCredential(teamId, nullifier, d.signers.throwaway.address, SALT)
@@ -290,7 +325,7 @@ describe("TeamRegistry", function () {
         .to.emit(d.registry, "CredentialClaimed")
         .withArgs(teamId, nullifier, d.signers.throwaway.address);
 
-      expect(await d.credential.ownerOf(1n)).to.equal(d.signers.throwaway.address);
+      expect(await d.credential.ownerOf(tokenId)).to.equal(d.signers.throwaway.address);
 
       await expect(
         d.registry.connect(d.signers.bob).claimCredential(teamId, nullifier, d.signers.throwaway.address, SALT)
@@ -315,12 +350,33 @@ describe("TeamRegistry", function () {
       const nullifier = await applyAsBob(teamId, claimCommitment, d.signers.bob);
       await d.registry.connect(d.signers.alice).acceptRequest(teamId, nullifier);
 
+      const sorted = [BigInt(aliceNullifier), BigInt(nullifier)].sort((a, b) => (a < b ? -1 : 1));
+
       await expect(d.registry.connect(d.signers.alice).reveal(teamId))
         .to.emit(d.registry, "TeamRevealed")
-        .withArgs(teamId, [aliceNullifier, nullifier]);
+        .withArgs(teamId, sorted);
 
       const team = await d.registry.getTeam(teamId);
       expect(team.isRevealed).to.equal(true);
+    });
+
+    it("stores a roster root over the sorted nullifiers", async function () {
+      const { teamId, nullifier: aliceNullifier } = await createTeamAsAlice(2, 0n);
+
+      expect(await d.registry.getTeamRosterRoot(teamId)).to.equal(ethers.ZeroHash);
+
+      const claimCommitment = claimCommitmentOf(d.signers.throwaway.address, SALT);
+      const nullifier = await applyAsBob(teamId, claimCommitment, d.signers.bob);
+      await d.registry.connect(d.signers.alice).acceptRequest(teamId, nullifier);
+      await d.registry.connect(d.signers.alice).reveal(teamId);
+
+      // Read the stored members (coerced to bigint) so the comparison is numeric,
+      // then hash the ascending order the contract commits to.
+      const members = (await d.registry.getTeamMembers(teamId)).map((x: bigint) => BigInt(x));
+      const sorted = [...members].sort((a, b) => (a < b ? -1 : 1));
+      const expected = ethers.keccak256(ethers.solidityPacked(["uint256[]"], [sorted]));
+
+      expect(await d.registry.getTeamRosterRoot(teamId)).to.equal(expected);
     });
 
     it("reveals the team after the deadline", async function () {

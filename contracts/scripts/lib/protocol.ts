@@ -10,7 +10,9 @@ export const SNARK_FIELD_SIZE =
 
 export const POSEIDON_LINK_KEY = "npm/poseidon-solidity@0.0.5/PoseidonT3.sol:PoseidonT3";
 
-export const STATE_PATH = join(process.cwd(), "deployments", "localhost.json");
+/// The demo/smoke scripts run on an ephemeral in-process network, so they keep their
+/// state in a separate file and never overwrite the real `deployments/localhost.json`.
+export const STATE_PATH = join(process.cwd(), "deployments", "demo-state.json");
 
 export interface ProtocolState {
   semaphore: string;

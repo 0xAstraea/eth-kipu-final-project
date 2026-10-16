@@ -7,9 +7,11 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "coverage": "hardhat test --coverage",
     "demo": "hardhat run scripts/demo.ts",
     "smoke": "hardhat run scripts/00-smoke.ts",
-    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:sepolia": "hardhat run deploy/deploy.ts --network sepolia",
+    "interact:sepolia": "hardhat run deploy/interact.ts --network sepolia",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

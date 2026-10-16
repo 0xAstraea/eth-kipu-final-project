@@ -5,11 +5,12 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {ITeamCredential} from "./interfaces/ITeamCredential.sol";
 
 /// @title TeamCredential
 /// @notice Soul-bound-style NFT credential issued when a student is accepted into a team.
 /// @dev The only entity allowed to mint is the TeamRegistry contract.
-contract TeamCredential is ERC721, Ownable {
+contract TeamCredential is ERC721, Ownable, ITeamCredential {
     /// @notice Address of the TeamRegistry contract allowed to mint.
     address public registry;
 
@@ -25,7 +26,11 @@ contract TeamCredential is ERC721, Ownable {
     /// @notice Emitted when a credential is minted.
     event CredentialMinted(address indexed to, uint256 indexed tokenId, uint256 indexed teamId);
 
+    /// @notice Thrown when the registry was already set.
     error RegistryAlreadySet();
+    /// @notice Thrown when the registry address is zero.
+    error InvalidRegistry();
+    /// @notice Thrown when a caller other than the registry attempts to mint.
     error NotRegistry();
 
     constructor() ERC721("TeamUp Credential", "TEAMUP") Ownable(msg.sender) {}
@@ -34,7 +39,7 @@ contract TeamCredential is ERC721, Ownable {
     /// @param registry_ Address of the TeamRegistry contract.
     function setRegistry(address registry_) external onlyOwner {
         if (registry != address(0)) revert RegistryAlreadySet();
-        if (registry_ == address(0)) revert RegistryAlreadySet();
+        if (registry_ == address(0)) revert InvalidRegistry();
 
         registry = registry_;
         emit RegistrySet(registry_);
@@ -47,7 +52,12 @@ contract TeamCredential is ERC721, Ownable {
     function mint(address to, uint256 teamId) external {
         if (msg.sender != registry) revert NotRegistry();
 
-        uint256 tokenId = _nextTokenId++;
+        uint256 tokenId = _nextTokenId;
+
+        // Safe: token ids start at 1 and cannot realistically reach type(uint256).max.
+        unchecked {
+            _nextTokenId = tokenId + 1;
+        }
 
         teamOf[tokenId] = teamId;
 

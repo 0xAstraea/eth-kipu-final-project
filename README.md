@@ -2,6 +2,8 @@
 
 Formación de equipos con membresía verificable: un protocolo on-chain donde los estudiantes demuestran que pertenecen al curso con una **prueba de conocimiento cero (Semaphore)** y se postulan a equipos **sin revelar su identidad**, recibiendo una credencial NFT al ser aceptados.
 
+> Para el análisis de producto, el modelo de amenazas y el detalle de diseño, ver [`WHITEPAPER.md`](WHITEPAPER.md).
+
 ## El problema
 
 En el curso actual, buscar equipo se resuelve con una planilla compartida. Ese mecanismo no verifica nada: cualquiera puede publicar cualquier dato, no hay forma de comprobar que alguien es compañero del curso, no se puede evitar que una persona se postule varias veces con identidades distintas, y no queda ningún registro verificable de los acuerdos.
@@ -74,18 +76,38 @@ Application {
 
 El address solamente puede aparecer si el propio usuario lo revela voluntariamente al reclamar su credencial, y puede usar una dirección desechable. Otras personas pueden pagar el gas del claim: el NFT siempre va al `claimAddress` fijado en el commitment (front-running del claim es inocuo).
 
-## Ejecutar
+## Instalación y compilación
 
 ```bash
 npm install
-
-# compilar
 npx hardhat compile
+```
 
-# tests (26 tests)
+## Tests y coverage
+
+```bash
+# suite completa (26 tests)
 npx hardhat test
 
-# demo completa en consola (flujo del video)
+# coverage con la herramienta built-in de Hardhat 3
+npx hardhat test --coverage
+```
+
+Resultado del coverage sobre el código propio: **83% de líneas/statements, 100% de ramas y 100% de funciones** (todas las métricas por encima del 40%). El reporte HTML queda en `coverage/html`.
+
+## Análisis estático (Slither)
+
+```bash
+uv tool install slither-analyzer          # alternativa: pip install slither-analyzer
+slither . --filter-paths "node_modules|openzeppelin|semaphore|poseidon"
+```
+
+El triage completo de los findings (corregidos y aceptados con justificación) está en [`security/slither-report.md`](security/slither-report.md).
+
+## Demo local
+
+```bash
+# flujo completo narrado por consola (para el video)
 npx hardhat run scripts/demo.ts
 ```
 
@@ -93,24 +115,65 @@ npx hardhat run scripts/demo.ts
 
 ```
 contracts/
-  TeamRegistry.sol        Núcleo del protocolo (Solidity + NatSpec)
-  TeamCredential.sol      ERC721 credencial (OpenZeppelin)
+  TeamRegistry.sol          Núcleo del protocolo (Solidity + NatSpec)
+  TeamCredential.sol        ERC721 credencial (OpenZeppelin)
+  interfaces/ITeamCredential.sol  Interfaz entre registry y credencial
 test/
-  TeamRegistry.test.ts    21 tests: sybil, anti-doxxeo, commit-reveal, reveal
-  TeamCredential.test.ts  5 tests: permisos, metadata, flujo completo
-  helpers/setup.ts        Fixtures + generación de proofs ZK off-chain
+  TeamRegistry.test.ts      21 tests: sybil, anti-doxxeo, commit-reveal, reveal
+  TeamCredential.test.ts    5 tests: permisos, metadata, flujo completo
+  helpers/setup.ts          Fixtures + generación de proofs ZK off-chain
+deploy/
+  deploy.ts                 Deploy completo a una red (Sepolia por defecto)
+  interact.ts               Corre el flujo on-chain con identidades nuevas
+  README.md                 Instrucciones de deploy y verificación
 scripts/
-  demo.ts                 Flujo completo narrado (para el video)
-  00-smoke.ts             Smoke test del pipeline Semaphore (deploy + proof on-chain)
-  deploy.ts               Deploy contra nodo localhost persistente
-  lib/protocol.ts         Helpers de deploy y generación de proofs
+  demo.ts                   Flujo completo narrado (para el video)
+  00-smoke.ts               Smoke test del pipeline Semaphore (deploy + proof)
+  lib/protocol.ts           Helpers de deploy y generación de proofs
+security/
+  slither-report.md         Triage de findings de Slither
 ```
 
 Las dependencias `Semaphore.sol`, `SemaphoreVerifier.sol` y `PoseidonT3` se instalan por npm (`@semaphore-protocol/contracts`, `poseidon-solidity`) y se despliegan con `getContractFactory`.
 
+## Deploy en testnet y verificación
+
+Instrucciones completas en [`deploy/README.md`](deploy/README.md). Resumen:
+
+```bash
+cp .env.example .env       # completar SEPOLIA_RPC_URL, DEPLOYER_PRIVATE_KEY, ETHERSCAN_API_KEY
+npx hardhat run deploy/deploy.ts --network sepolia
+npx hardhat verify --network sepolia <TEAM_CREDENTIAL>
+npx hardhat verify --network sepolia <TEAM_REGISTRY> <SEMAPHORE_ADDRESS>
+```
+
+## Red utilizada y contratos desplegados
+
+> _Pendiente: completar tras desplegar en Sepolia._
+
+| Contrato | Dirección | Código verificado |
+|---|---|---|
+| TeamRegistry | `0x…` | [Sepolia Etherscan](https://sepolia.etherscan.io/) |
+| TeamCredential | `0x…` | [Sepolia Etherscan](https://sepolia.etherscan.io/) |
+| Semaphore (PSE) | `0x…` | [Sepolia Etherscan](https://sepolia.etherscan.io/) |
+
+## Evidencia on-chain (flujo principal)
+
+> _Pendiente: `deploy/interact.ts` imprime el hash de cada paso; pegarlos aquí._
+
+| Paso | Transacción |
+|---|---|
+| addCourseMember | `0x…` |
+| createTeam | `0x…` |
+| requestJoin | `0x…` |
+| acceptRequest | `0x…` |
+| claimCredential | `0x…` |
+| reveal | `0x…` |
+
+
 ## Decisiones de diseño
 
-- **Reloj por bloque, no por timestamp.** `revealAtBlock` usa `block.number` en vez de timestamps: es más barato de verificar, no depende de la honestza del validador y es determinista en tests.
+- **Reloj por bloque, no por timestamp.** `revealAtBlock` usa `block.number` en vez de timestamps: es más barato de verificar, no depende de la honestidad del validador y es determinista en tests.
 - **Firmas ECDSA no, ZK sí.** En un curso chico el docente es un emisor confiable, pero el protocolo igualmente le exige al alumno *demostrar* membresía sin exponer su identidad: la confianza mínima necesaria se traslada al gatekeeper (docente) y todo lo demás es criptografía.
 - **Commit-reveal en vez del circuito de "ownership" de Semaphore.** Ese circuito solo existe en el repo experimental de PSE (no auditado); `keccak256(address, salt)` resuelve el mismo problema sin depender de código experimental.
 
@@ -124,17 +187,19 @@ Las dependencias `Semaphore.sol`, `SemaphoreVerifier.sol` y `PoseidonT3` se inst
 
 | Prioridad | Feature | Notas |
 |---|---|---|
-| 1 | **Staking + slashing** | Depósito al unirse; el equipo vota el slashing de quien abandona. Acá entra `ReentrancyGuard` |
+| 1 | **Staking + slashing** | Depósito al unirse; el equipo vota el slashing de quien abandona |
 | 2 | **Relayer** | Oculta el `msg.sender` de la postulación y elimina el griefing |
 | 3 | **Reclutamiento ciego** | Aceptar por nullifier y revelar recién al claim, con el circuito de ownership de Semaphore cuando madure en el SDK estable |
 | 4 | **Reputación acumulativa** | Credenciales por participación, sin puntuaciones públicas |
 | 5 | **Matching off-chain** | Filtros por skills/roles sobre los grupos, vía subgraph |
+| 6 | **Interfaz web** | Panel Next.js + wagmi para operar contra testnet sin scripts |
 
 ## Notas de seguridad implementadas
 
 - `validateProof` de Semaphore quema nullifiers: imposible postularse dos veces al mismo equipo.
 - El message del proof incluye `keccak256(presentation, claimCommitment)`: ni la carta ni el commitment pueden alterarse.
-- Checks-Effects-Interactions en todas las funciones con estado.
+- Checks-Effects-Interactions en todas las funciones con estado y `ReentrancyGuard` (`nonReentrant`) en las funciones con llamadas externas.
 - Errores custom (sin strings) y eventos para cada transición de estado.
-- OZ v5: `Ownable`, `ERC721`. Sin dependencias de librerías externas más allá de Semaphore/OZ.
-- **Tests:** miembro entra, no-miembro revert, doble postulación revert, mensaje alterado revert, claim con salt incorrecto revert, claim antes de aceptación revert, reveal prematuro revert, equipo lleno revert,NFT a address desechable y no al sender.
+- `Semaphore`, `courseGroupId` y `SNARK_FIELD_SIZE` son `immutable`/`constant`; `unchecked` en incrementos que no pueden desbordar.
+- OZ v5: `Ownable`, `ERC721`, `ReentrancyGuard`. Sin dependencias de librerías externas más allá de Semaphore/OZ.
+- **Tests:** miembro entra; no-miembro revert; doble postulación revert; mensaje alterado revert; claim con salt incorrecto revert; claim antes de aceptación revert; reveal prematuro revert; equipo lleno revert; NFT a address desechable y no al sender.

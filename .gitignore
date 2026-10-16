@@ -8,3 +8,4 @@ deployments/
 .DS_Store
 
 types/
+coverage/

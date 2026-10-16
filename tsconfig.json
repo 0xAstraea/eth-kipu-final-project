@@ -10,5 +10,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node", "mocha"]
   },
-  "include": ["./scripts", "./test", "./hardhat.config.ts"]
+  "include": ["./scripts", "./test", "./deploy", "./hardhat.config.ts"]
 }

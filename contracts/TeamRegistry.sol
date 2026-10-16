@@ -2,7 +2,9 @@
 pragma solidity 0.8.28;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ISemaphore} from "@semaphore-protocol/contracts/interfaces/ISemaphore.sol";
+import {ITeamCredential} from "./interfaces/ITeamCredential.sol";
 
 // Imported so Hardhat compiles them and they can be deployed with getContractFactory.
 import {Semaphore} from "@semaphore-protocol/contracts/Semaphore.sol";
@@ -15,7 +17,7 @@ import {SemaphoreVerifier} from "@semaphore-protocol/contracts/base/SemaphoreVer
 /// application time; it is committed as a hash and only revealed (optionally) when they
 /// claim their credential NFT. The Semaphore group is administered by this contract so
 /// that only the course owner can add members.
-contract TeamRegistry is Ownable {
+contract TeamRegistry is Ownable, ReentrancyGuard {
     /// @notice BN254 scalar field size. Semaphore messages must be reduced modulo this
     /// value off-chain to stay consistent with the circuit.
     uint256 public constant SNARK_FIELD_SIZE =
@@ -80,21 +82,50 @@ contract TeamRegistry is Ownable {
     /// @notice Emitted when a team is revealed (full or deadline reached).
     event TeamRevealed(uint256 indexed teamId, uint256[] memberNullifiers);
 
+    /// @notice Thrown when a caller other than the course owner performs an owner-only action.
     error NotCourseOwner();
+    /// @notice Thrown when the credential contract address is zero.
     error CredentialNotSet();
+    /// @notice Thrown when the credential contract was already set.
     error CredentialAlreadySet();
+    /// @notice Thrown when a team is created with a maximum member count of zero.
     error InvalidMaxMembers();
+    /// @notice Thrown when the proof scope does not match the team id being created.
     error InvalidScope();
+    /// @notice Thrown when operating on a team that does not exist.
+    /// @param teamId Id of the missing team.
     error TeamDoesNotExist(uint256 teamId);
+    /// @notice Thrown when a caller other than the team admin performs an admin-only action.
+    /// @param teamId Id of the team the caller is not admin of.
     error NotTeamAdmin(uint256 teamId);
+    /// @notice Thrown when an action would exceed the team's maximum member count.
+    /// @param teamId Id of the full team.
     error TeamIsFull(uint256 teamId);
+    /// @notice Thrown when operating on a team that was already revealed.
+    /// @param teamId Id of the revealed team.
     error TeamAlreadyRevealed(uint256 teamId);
+    /// @notice Thrown when a team is revealed before it is full and before the deadline block.
+    /// @param teamId Id of the team whose reveal conditions are not met.
     error RevealConditionsNotMet(uint256 teamId);
+    /// @notice Thrown when an application already exists for the given nullifier.
+    /// @param teamId Id of the team.
+    /// @param nullifier Applicant nullifier that already applied.
     error ApplicationAlreadyExists(uint256 teamId, uint256 nullifier);
+    /// @notice Thrown when no application exists for the given nullifier.
+    /// @param teamId Id of the team.
+    /// @param nullifier Applicant nullifier with no application.
     error ApplicationDoesNotExist(uint256 teamId, uint256 nullifier);
+    /// @notice Thrown when claiming or reading an application that was not accepted.
+    /// @param teamId Id of the team.
+    /// @param nullifier Applicant nullifier that was not accepted.
     error ApplicationNotAccepted(uint256 teamId, uint256 nullifier);
+    /// @notice Thrown when claiming a credential that was already claimed.
+    /// @param teamId Id of the team.
+    /// @param nullifier Applicant nullifier that already claimed.
     error ApplicationAlreadyClaimed(uint256 teamId, uint256 nullifier);
+    /// @notice Thrown when the supplied address and salt do not match the stored commitment.
     error InvalidClaimCommitment();
+    /// @notice Thrown when the proof message does not match keccak256(presentation, claimCommitment).
     error InvalidMessageHash();
 
     /// @param semaphoreAddress Address of the deployed Semaphore contract.
@@ -118,7 +149,7 @@ contract TeamRegistry is Ownable {
     /// @notice Adds a student identity commitment to the course group.
     /// @dev Only the course owner (e.g. the professor) decides who is a verified student.
     /// @param identityCommitment The student's Semaphore identity commitment.
-    function addCourseMember(uint256 identityCommitment) external onlyOwner {
+    function addCourseMember(uint256 identityCommitment) external onlyOwner nonReentrant {
         semaphore.addMember(courseGroupId, identityCommitment);
 
         emit CourseMemberAdded(courseGroupId, identityCommitment);
@@ -145,7 +176,7 @@ contract TeamRegistry is Ownable {
         uint256 maxMembers,
         uint256 revealAtBlock,
         ISemaphore.SemaphoreProof calldata proof
-    ) external returns (uint256 teamId) {
+    ) external nonReentrant returns (uint256 teamId) {
         if (maxMembers == 0) revert InvalidMaxMembers();
 
         teamId = teamCounter;
@@ -164,7 +195,10 @@ contract TeamRegistry is Ownable {
         team.isRevealed = false;
         team.memberNullifiers.push(proof.nullifier);
 
-        teamCounter = teamId + 1;
+        // Safe: teamId equals the current counter, so it can never exceed type(uint256).max.
+        unchecked {
+            teamCounter = teamId + 1;
+        }
 
         emit TeamCreated(teamId, msg.sender, name, maxMembers);
     }
@@ -184,7 +218,7 @@ contract TeamRegistry is Ownable {
         string calldata presentation,
         bytes32 claimCommitment,
         ISemaphore.SemaphoreProof calldata proof
-    ) external {
+    ) external nonReentrant {
         Team storage team = _teams[teamId];
 
         if (team.maxMembers == 0) revert TeamDoesNotExist(teamId);
@@ -237,7 +271,10 @@ contract TeamRegistry is Ownable {
     /// @dev Anyone may submit the transaction (gas can be paid by a third party); the
     /// NFT always goes to the claimAddress fixed in the commitment. The claimAddress
     /// can be a throwaway address to keep the claimant's main address private.
-    function claimCredential(uint256 teamId, uint256 nullifier, address claimAddress, uint256 salt) external {
+    function claimCredential(uint256 teamId, uint256 nullifier, address claimAddress, uint256 salt)
+        external
+        nonReentrant
+    {
         if (credential == address(0)) revert CredentialNotSet();
 
         Application storage application = _applications[teamId][nullifier];
@@ -267,7 +304,8 @@ contract TeamRegistry is Ownable {
         if (team.maxMembers == 0) revert TeamDoesNotExist(teamId);
         if (team.isRevealed) revert TeamAlreadyRevealed(teamId);
 
-        bool isFull = team.memberNullifiers.length == team.maxMembers;
+        uint256 memberCount = team.memberNullifiers.length;
+        bool isFull = memberCount == team.maxMembers;
         bool deadlinePassed = team.revealAtBlock != 0 && block.number >= team.revealAtBlock;
 
         if (!isFull && !deadlinePassed) revert RevealConditionsNotMet(teamId);
@@ -277,18 +315,11 @@ contract TeamRegistry is Ownable {
         emit TeamRevealed(teamId, team.memberNullifiers);
     }
 
+    /// @dev Calls TeamCredential.mint through a typed interface; revert reasons from the
+    /// credential contract bubble up automatically. The target is a trusted, owner-set
+    /// contract and the caller checked it is not the zero address.
     function _mintCredential(address to, uint256 teamId) private {
-        (bool success, bytes memory returnData) =
-            credential.call(abi.encodeWithSignature("mint(address,uint256)", to, teamId));
-
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    revert(add(returnData, 0x20), mload(returnData))
-                }
-            }
-            revert CredentialNotSet();
-        }
+        ITeamCredential(credential).mint(to, teamId);
     }
 
     /// @notice Returns the full team data.

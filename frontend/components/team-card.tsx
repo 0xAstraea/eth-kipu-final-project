@@ -7,7 +7,7 @@ import { formatBig, shorten } from "@/lib/format";
 import { randomSalt } from "@/lib/identity";
 import { claimCommitmentOf, joinProof } from "@/lib/semaphore";
 import type { IdentityView, StoredClaim, TeamView } from "@/lib/types";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { parseAbiItem, type Address } from "viem";
 import { useAccount, usePublicClient, useReadContracts, useWriteContract } from "wagmi";
 
@@ -16,6 +16,9 @@ const joinRequested = parseAbiItem(
 );
 const credentialMinted = parseAbiItem(
   "event CredentialMinted(address indexed to, uint256 indexed tokenId, uint256 indexed teamId)"
+);
+const credentialClaimed = parseAbiItem(
+  "event CredentialClaimed(uint256 indexed teamId, uint256 indexed nullifier, address indexed claimAddress)"
 );
 
 const fromBlock = BigInt(process.env.NEXT_PUBLIC_FROM_BLOCK ?? "0");
@@ -45,7 +48,7 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
   const [tokenMeta, setTokenMeta] = useState<Record<string, string>>({});
 
   const isAdmin = address && team.admin.toLowerCase() === address.toLowerCase();
-  const teamClaims = claims.filter((claim) => claim.teamId === team.id);
+  const teamClaims = useMemo(() => claims.filter((claim) => claim.teamId === team.id), [claims, team.id]);
   const enrolled = identities.filter((identity) => courseCommitments.includes(identity.commitment));
 
   const { data: applicationStates } = useReadContracts({
@@ -57,6 +60,20 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
     })),
     query: { enabled: teamClaims.length > 0 }
   });
+
+  // Nullifiers whose application is actually claimed on-chain. Only these have a token.
+  const claimedNullifiers = useMemo(
+    () =>
+      new Set(
+        teamClaims
+          .filter((_, index) => {
+            const state = applicationStates?.[index];
+            return state?.status === "success" && state.result?.[2] === true;
+          })
+          .map((stored) => stored.nullifier)
+      ),
+    [applicationStates, teamClaims]
+  );
 
   useEffect(() => {
     if (!publicClient) return;
@@ -89,18 +106,31 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
     let active = true;
     (async () => {
       for (const stored of teamClaims) {
+        // Only claimed applications have a token; pending/never-accepted ones do not.
+        if (!claimedNullifiers.has(stored.nullifier)) continue;
         if (tokenMeta[stored.nullifier]) continue;
         try {
-          const logs = await publicClient.getLogs({
-            address: addresses.credential,
-            event: credentialMinted,
-            args: { teamId: BigInt(stored.teamId), to: stored.claimAddress as Address },
+          // Find the claim of THIS application (CredentialClaimed carries the nullifier),
+          // then the mint produced in the same transaction. Filtering by (teamId, to)
+          // alone is ambiguous when several applications share a claim address.
+          const claimLogs = await publicClient.getLogs({
+            address: addresses.registry,
+            event: credentialClaimed,
+            args: { teamId: BigInt(stored.teamId), nullifier: BigInt(stored.nullifier) },
             fromBlock,
             toBlock: "latest"
           });
-          const last = logs.at(-1);
-          if (!last) continue;
-          const tokenId = last.args.tokenId as bigint;
+          const claimLog = claimLogs.at(-1);
+          if (!claimLog) continue;
+          const minted = await publicClient.getLogs({
+            address: addresses.credential,
+            event: credentialMinted,
+            fromBlock: claimLog.blockNumber,
+            toBlock: claimLog.blockNumber
+          });
+          const mint = minted.find((log) => log.transactionHash === claimLog.transactionHash);
+          if (!mint) continue;
+          const tokenId = mint.args.tokenId as bigint;
           const uri = (await publicClient.readContract({
             address: addresses.credential,
             abi: teamCredentialAbi,
@@ -116,7 +146,7 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
     return () => {
       active = false;
     };
-  }, [publicClient, teamClaims, tokenMeta]);
+  }, [publicClient, teamClaims, tokenMeta, claimedNullifiers]);
 
   async function apply(event: React.FormEvent) {
     event.preventDefault();
@@ -143,6 +173,25 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
         presentation,
         claimCommitment
       );
+
+      // Semaphore's nullifier depends only on (identity, scope=teamId), so an identity
+      // that already occupies a slot in this team (its creator, or an accepted member)
+      // will produce a burned nullifier and the proof is rejected on-chain. Detect it
+      // here and explain, instead of surfacing the cryptic Semaphore revert.
+      const nullifier = proof.nullifier.toString();
+      if (team.members.includes(nullifier)) {
+        setError(
+          "This identity already holds a slot in this team (the creator starts as member #1). Pick another identity."
+        );
+        setBusy("");
+        return;
+      }
+      if (applications.some((app) => app.nullifier === nullifier)) {
+        setError("This identity has already applied to this team.");
+        setBusy("");
+        return;
+      }
+
       setBusy("Awaiting wallet confirmation…");
       if (publicClient && address) {
         await publicClient.simulateContract({
@@ -421,7 +470,7 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
                     <span className="text-xs text-neutral-500">waiting for admin acceptance</span>
                   )}
                 </div>
-                {meta && (
+                {claimed && meta && (
                   <p className="mt-2 break-all text-xs text-emerald-400">
                     token #{meta.split("|")[0]} · {decodeTokenURI(meta.split("|")[1])}
                   </p>

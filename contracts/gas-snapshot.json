@@ -1,0 +1,228 @@
+{
+  "baseline": {
+    "measuredAt": "2026-10-19",
+    "rows": [
+      {
+        "label": "deploy SemaphoreVerifier",
+        "gas": 3716011
+      },
+      {
+        "label": "deploy PoseidonT3",
+        "gas": 3614580
+      },
+      {
+        "label": "deploy Semaphore",
+        "gas": 1793629
+      },
+      {
+        "label": "deploy TeamCredential",
+        "gas": 1323952
+      },
+      {
+        "label": "deploy TeamRegistry",
+        "gas": 1524566
+      },
+      {
+        "label": "TeamCredential.setRegistry",
+        "gas": 47386
+      },
+      {
+        "label": "TeamRegistry.setCredential",
+        "gas": 47442
+      },
+      {
+        "label": "TeamRegistry.addCourseMember (alice)",
+        "gas": 127133
+      },
+      {
+        "label": "TeamRegistry.addCourseMember (bob)",
+        "gas": 164750
+      },
+      {
+        "label": "TeamRegistry.addCourseMember (charlie)",
+        "gas": 152912
+      },
+      {
+        "label": "Semaphore.createGroup (raw)",
+        "gas": 91589
+      },
+      {
+        "label": "Semaphore.addMember (raw, owner is admin)",
+        "gas": 117951
+      },
+      {
+        "label": "TeamRegistry.createTeam",
+        "gas": 500973
+      },
+      {
+        "label": "TeamRegistry.requestJoin",
+        "gas": 327501
+      },
+      {
+        "label": "TeamRegistry.acceptRequest",
+        "gas": 81995
+      },
+      {
+        "label": "TeamRegistry.reveal",
+        "gas": 80651
+      },
+      {
+        "label": "TeamRegistry.claimCredential",
+        "gas": 105709
+      },
+      {
+        "label": "Semaphore.validateProof (bare, no registry logic)",
+        "gas": 285135
+      },
+      {
+        "label": "TeamRegistry.createTeam (empty strings)",
+        "gas": 398203
+      },
+      {
+        "label": "TeamRegistry.createTeam (revealAtBlock set)",
+        "gas": 503809
+      },
+      {
+        "label": "TeamRegistry.reveal (by deadline)",
+        "gas": 77592
+      },
+      {
+        "label": "TeamRegistry.createTeam (200-char description)",
+        "gas": 597178
+      },
+      {
+        "label": "TeamCredential.mint (direct, isolated)",
+        "gas": 82864
+      },
+      {
+        "label": "TeamCredential.tokenURI (view)",
+        "gas": 38528
+      },
+      {
+        "label": "TeamRegistry.getTeam (view)",
+        "gas": 42478
+      },
+      {
+        "label": "TeamRegistry.getTeamMembers (view)",
+        "gas": 28502
+      },
+      {
+        "label": "TeamRegistry.getApplication (view)",
+        "gas": 26082
+      }
+    ],
+    "flowTotal": 1096829,
+    "deployTotal": 11972738,
+    "sizes": {
+      "TeamRegistry": 6234,
+      "TeamCredential": 5412
+    }
+  },
+  "applied": {
+    "measuredAt": "2026-10-19T21:43:42.354Z",
+    "rows": [
+      {
+        "label": "deploy SemaphoreVerifier",
+        "gas": 3704567
+      },
+      {
+        "label": "deploy PoseidonT3",
+        "gas": 3603141
+      },
+      {
+        "label": "deploy Semaphore",
+        "gas": 1782194
+      },
+      {
+        "label": "deploy TeamRegistry",
+        "gas": 1635891
+      },
+      {
+        "label": "deploy TeamCredential",
+        "gas": 1196510
+      },
+      {
+        "label": "TeamRegistry.setCredential",
+        "gas": 47452
+      },
+      {
+        "label": "TeamRegistry.addCourseMembers (3 students)",
+        "gas": 310329
+      },
+      {
+        "label": "TeamRegistry.createTeam",
+        "gas": 472579
+      },
+      {
+        "label": "TeamRegistry.requestJoin",
+        "gas": 323338
+      },
+      {
+        "label": "TeamRegistry.acceptRequest",
+        "gas": 80048
+      },
+      {
+        "label": "TeamRegistry.reveal",
+        "gas": 56473
+      },
+      {
+        "label": "TeamRegistry.claimCredential",
+        "gas": 101616
+      },
+      {
+        "label": "Semaphore.validateProof (bare, no registry logic)",
+        "gas": 285147
+      },
+      {
+        "label": "TeamRegistry.createTeam (empty strings)",
+        "gas": 369797
+      },
+      {
+        "label": "TeamRegistry.createTeam (revealAtBlock set)",
+        "gas": 455515
+      },
+      {
+        "label": "TeamRegistry.reveal (by deadline)",
+        "gas": 53431
+      },
+      {
+        "label": "TeamRegistry.createTeam (200-char description)",
+        "gas": 568760
+      },
+      {
+        "label": "TeamCredential.mint (direct, isolated)",
+        "gas": 80786
+      },
+      {
+        "label": "Semaphore.addMember x3 (individual total)",
+        "gas": 417249
+      },
+      {
+        "label": "Semaphore.addMembers (3 in one tx)",
+        "gas": 299677
+      },
+      {
+        "label": "TeamCredential.tokenURI (view)",
+        "gas": 38528
+      },
+      {
+        "label": "TeamRegistry.getTeam (view)",
+        "gas": 38303
+      },
+      {
+        "label": "TeamRegistry.getTeamMembers (view)",
+        "gas": 28524
+      },
+      {
+        "label": "TeamRegistry.getApplication (view)",
+        "gas": 26104
+      }
+    ],
+    "flowTotal": 1034054,
+    "deployTotal": 11922303,
+    "sizes": {
+      "TeamRegistry": 6857,
+      "TeamCredential": 4936
+    }
+  }
+}

@@ -144,7 +144,7 @@ async function main() {
   console.log("CredentialClaimed -> NFT owner:", await credential.ownerOf(1n));
   console.log("  (the throwaway address chosen by Bob, NOT the application sender)");
 
-  console.log("\nDEMO COMPLETE - see events in the logs and `npx hardhat test` (28 passing)");
+  console.log("\nDEMO COMPLETE - see events in the logs and `npx hardhat test` (30 passing)");
 }
 
 main()

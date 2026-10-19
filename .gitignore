@@ -9,6 +9,9 @@ coverage/
 types/
 deployments/
 
+# Gas analysis scratch
+.gas-cache/
+
 # Next.js
 .next/
 out/

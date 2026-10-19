@@ -56,12 +56,12 @@ async function main() {
   const bob = new Identity();
   const charlie = new Identity();
 
-  // 2. The course owner enrolls them.
-  for (const identity of [alice, bob, charlie]) {
-    const tx = await registry.connect(owner).addCourseMember(identity.commitment);
-    await tx.wait();
-    console.log(`addCourseMember ${identity.commitment} -> ${tx.hash}`);
-  }
+  // 2. The course owner enrolls them, in one transaction.
+  const enrollTx = await registry
+    .connect(owner)
+    .addCourseMembers([alice.commitment, bob.commitment, charlie.commitment]);
+  await enrollTx.wait();
+  console.log(`addCourseMembers (alice, bob, charlie) -> ${enrollTx.hash}`);
 
   const commitments = [alice.commitment, bob.commitment, charlie.commitment];
   const group = new Group(commitments);

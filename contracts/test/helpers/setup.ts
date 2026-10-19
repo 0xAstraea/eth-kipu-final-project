@@ -44,9 +44,10 @@ export async function deployProtocol(): Promise<Deployment> {
   });
   const semaphore: any = await semaphoreFactory.deploy(await verifier.getAddress());
 
-  const credential: any = await ethers.deployContract("TeamCredential");
   const registry: any = await ethers.deployContract("TeamRegistry", [await semaphore.getAddress()]);
-  await credential.setRegistry(await registry.getAddress());
+  const credential: any = await ethers.deployContract("TeamCredential", [
+    await registry.getAddress()
+  ]);
   await registry.connect(owner).setCredential(await credential.getAddress());
 
   const groupId: bigint = await registry.courseGroupId();
@@ -60,10 +61,9 @@ export async function deployProtocol(): Promise<Deployment> {
 
   const commitments: bigint[] = [];
   for (const name of ["alice", "bob", "charlie"] as const) {
-    const commitment = identities[name].commitment;
-    await registry.connect(owner).addCourseMember(commitment);
-    commitments.push(commitment);
+    commitments.push(identities[name].commitment);
   }
+  await registry.connect(owner).addCourseMembers(commitments);
 
   return {
     signers: { owner, alice, bob, charlie, dave, eve, throwaway },

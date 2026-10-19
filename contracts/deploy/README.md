@@ -15,6 +15,9 @@ Copy `.env.example` to `.env` and fill in:
 | `ETHERSCAN_API_KEY` | API key for contract verification |
 | `COURSE_MEMBERS` | Optional: comma-separated identity commitments to enroll now |
 | `OWNER_ADDRESS` | Optional: address that becomes the course owner instead of the deployer. On localhost it is also funded with 10 ETH. |
+| `SEMAPHORE_ADDRESS` | Optional: reuse an existing Semaphore contract instead of the recorded one |
+| `SEMAPHORE_VERIFIER_ADDRESS` | Optional: reuse an existing Semaphore verifier |
+| `POSEIDON_T3_ADDRESS` | Optional: reuse an existing PoseidonT3 library |
 
 `.env` is git-ignored. Do not commit it.
 
@@ -24,17 +27,34 @@ Copy `.env.example` to `.env` and fill in:
 npx hardhat run deploy/deploy.ts --network sepolia
 ```
 
-This deploys, in order: `SemaphoreVerifier`, `PoseidonT3`, `Semaphore` (linked to
-`PoseidonT3`), `TeamCredential` and `TeamRegistry`; wires `TeamRegistry` and
-`TeamCredential` together; optionally enrolls `COURSE_MEMBERS`; and writes the addresses
-to `deployments/sepolia.json`.
+This deploys `TeamRegistry`, then `TeamCredential` with the registry address as its
+constructor argument, then wires `TeamRegistry` and `TeamCredential` together; optionally
+enrolls `COURSE_MEMBERS` in a single transaction; and writes the addresses to
+`deployments/sepolia.json`.
+
+### The reusable Semaphore stack
+
+`SemaphoreVerifier` and `PoseidonT3` hold no state, and `Semaphore` only holds group state,
+where every registry creates its own group. So the whole stack is deployed once and reused by
+every later deployment.
+
+The canonical record lives in [`semaphore-stack.json`](semaphore-stack.json), one entry per
+network. The deploy script resolves the addresses in this order:
+
+1. the `SEMAPHORE_ADDRESS`, `SEMAPHORE_VERIFIER_ADDRESS` and `POSEIDON_T3_ADDRESS` env vars
+2. the entry for the network in `semaphore-stack.json`
+3. the entry for the network in the previous `deployments/<network>.json`
+4. a fresh deployment of whatever is missing
+
+An address is only reused when contract code is still on chain at that address. A newly
+deployed stack is written back to `semaphore-stack.json`, so the next deployment is free.
 
 ## 3. Verify
 
 Use the addresses printed by the deploy step and the constructor arguments:
 
 ```bash
-npx hardhat verify --network sepolia <TeamCredential>
+npx hardhat verify --network sepolia <TeamCredential> <TeamRegistry>
 npx hardhat verify --network sepolia <TeamRegistry> <Semaphore>
 
 # Third-party contracts (optional). Semaphore needs the linked library address:
@@ -45,6 +65,9 @@ npx hardhat verify --network sepolia --libraries \
 npx hardhat verify --network sepolia <PoseidonT3>
 ```
 
+The compiler runs with the CBOR metadata disabled, to keep the deployed code small. The
+verification uses the same settings, so the bytecode matches.
+
 Paste the resulting explorer URLs into the main `README.md`.
 
 ## 4. Run a real interaction
@@ -54,10 +77,10 @@ npx hardhat run deploy/interact.ts --network sepolia
 ```
 
 Runs the full flow on-chain with **freshly generated** identities (nothing hardcoded):
-enrol three members, create a team with a ZK proof, apply anonymously, accept, fill the
-team, reveal it (which stores the roster commitment), and finally claim the credential to a
-throwaway address. It prints the transaction hash of every step — copy them into the
-`README.md` "On-chain evidence" section.
+enrol three members in one transaction, create a team with a ZK proof, apply anonymously,
+accept, fill the team, reveal it (which stores the roster commitment), and finally claim the
+credential to a throwaway address. It prints the transaction hash of every step — copy them
+into the `README.md` "On-chain evidence" section.
 
 > The scripts generate random identities at runtime, so no usable secret is ever stored in
 > the repository. For local development use `npx hardhat run scripts/demo.ts` instead.

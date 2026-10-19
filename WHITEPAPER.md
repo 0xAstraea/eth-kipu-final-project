@@ -95,8 +95,9 @@ Semaphore` y `TeamRegistry ↔ TeamCredential`.
 
 ## 5. Flujo del protocolo
 
-1. **Alta de miembros.** El dueño del curso llama `addCourseMember(commitment)` por cada
-   estudiante. El *commitment* es la parte pública de la identidad Semaphore del alumno.
+1. **Alta de miembros.** El dueño del curso llama `addCourseMembers([commitments])` (o
+   `addCourseMember(commitment)` de a uno) por cada estudiante. El *commitment* es la parte
+   pública de la identidad Semaphore del alumno.
 2. **Creación de equipo.** Un miembro genera una prueba ZK con `scope = teamId` y llama
    `createTeam`. El contrato valida la prueba contra el grupo del curso y crea el equipo con
    el creador como administrador.
@@ -135,11 +136,13 @@ Semaphore` y `TeamRegistry ↔ TeamCredential`.
 - **Checks-Effects-Interactions.** En `claimCredential` la marca `application.claimed = true`
   se escribe antes del mint, de modo que una reentrada (posible vía `onERC721Received` si
   `claimAddress` fuera un contrato) no puede reclamar dos veces.
-- **ReentrancyGuard.** Las funciones con llamadas externas (`addCourseMember`, `createTeam`,
-  `requestJoin`, `claimCredential`) están protegidas con `nonReentrant` de OpenZeppelin.
-- **Control de acceso.** `Ownable` en ambos contratos propios. `addCourseMember` y
-  `setCredential` son del dueño del curso; `acceptRequest` es del administrador del equipo;
-  `mint` de la credencial solo lo puede llamar el registry.
+- **ReentrancyGuard.** Las funciones con llamadas externas (`addCourseMember`,
+  `addCourseMembers`, `createTeam`, `requestJoin`, `claimCredential`) están protegidas con
+  `nonReentrant` de OpenZeppelin, en su variante transient (EIP-1153).
+- **Control de acceso.** `Ownable` en `TeamRegistry`. `addCourseMember`,
+  `addCourseMembers` y `setCredential` son del dueño del curso; `acceptRequest` es del
+  administrador del equipo; `mint` de la credencial solo lo puede llamar el registry, cuya
+  dirección queda fijada en el constructor de la credencial.
 - **Errores custom** en lugar de strings, y **eventos** para cada transición de estado.
 - **Sin `tx.origin`, `delegatecall` ni `selfdestruct`.** La única llamada externa relevante es
   a contratos de confianza (Semaphore inmutable, `TeamCredential` propio).
@@ -149,15 +152,27 @@ Semaphore` y `TeamRegistry ↔ TeamCredential`.
 
 ## 8. Eficiencia y gas
 
-- `semaphore`, `courseGroupId` y `SNARK_FIELD_SIZE` son `immutable` / `constant`.
+- `semaphore`, `courseGroupId`, `SNARK_FIELD_SIZE` y el `registry` de la credencial son
+  `immutable` / `constant`.
+- El `Team` empaqueta `admin`, `maxMembers` y `revealAtBlock` en un solo slot de storage, y el
+  estado "revelado" se deriva de `rosterRoot` en lugar de un bool que puede desincronizarse.
 - Se cachean lecturas de storage repetidas (por ejemplo la longitud de miembros al revelar).
 - Se usa `unchecked` en incrementos que no pueden desbordar (`teamCounter`, `_nextTokenId`).
 - Se usan `calldata` para los parámetros externos y `memory` solo donde corresponde.
-- Optimizador de Solidity activado (200 corridas).
+- El guard de reentrada usa transient storage, así que no escribe un slot de storage por
+  llamada.
+- `addCourseMembers` inscribe a varios alumnos en una sola transacción.
+- El stack de Semaphore (verificador, PoseidonT3 y Semaphore) se despliega una vez y se
+  reutiliza: el verificador y la librería no tienen estado, y cada registry crea su propio
+  grupo.
+- Optimizador de Solidity activado (200 corridas), sin metadata CBOR para achicar el código
+  desplegado.
+- Medición completa antes y después de cada cambio en
+  [`contracts/GAS-OPTIMIZATION-REPORT.md`](contracts/GAS-OPTIMIZATION-REPORT.md).
 
 ## 9. Testing y análisis estático
 
-- **28 tests** de Mocha que cubren el flujo principal y todos los reverts relevantes:
+- **30 tests** de Mocha que cubren el flujo principal y todos los reverts relevantes:
   no-miembro, doble postulación, mensaje alterado, claim con salt incorrecto, claim antes de
   aceptar, claim antes de revelar, reveal prematuro, equipo lleno, root del plantel
   determinista, y que la postulación nunca queda ligada al emisor.

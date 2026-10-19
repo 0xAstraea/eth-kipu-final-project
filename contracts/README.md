@@ -24,6 +24,7 @@ TeamUp ZK reemplaza la planilla por un protocolo donde:
                         │   (Ownable)          │
                         └──────────┬───────────┘
                                    │ addCourseMember(identityCommitment)
+                                   │ addCourseMembers(identityCommitments[])
                                    ▼
   ┌───────────────────────────────────────────────────────┐
   │  Semaphore.sol  (PSE - zero-knowledge group)          │
@@ -55,7 +56,7 @@ Si heredara, cualquiera podría llamar `addMember` directamente y bypassear el `
 
 | # | Actor | Acción | Resultado on-chain |
 |---|---|---|---|
-| 1 | Docente | `addCourseMember(commitment)` | El alumno entra al grupo ZK del curso |
+| 1 | Docente | `addCourseMember(commitment)` o `addCourseMembers(commitments[])` | El alumno entra al grupo ZK del curso |
 | 2 | Alice | `createTeam(name, desc, max, revealAtBlock, proof)` | Equipo creado; el proof ZK (scope = teamId) verifica membresía |
 | 3 | Bob | `requestJoin(teamId, presentation, claimCommitment, proof)` | Postulación registrada **por nullifier**; carta + commitment autenticados dentro del proof |
 | 4 | Eve (no es del curso) | `requestJoin(...)` | Revert: `Semaphore__InvalidProof` |
@@ -87,7 +88,7 @@ npx hardhat compile
 ## Tests y coverage
 
 ```bash
-# suite completa (28 tests)
+# suite completa (30 tests)
 npx hardhat test
 
 # coverage con la herramienta built-in de Hardhat 3
@@ -119,13 +120,16 @@ contracts/
   TeamRegistry.sol          Núcleo del protocolo (Solidity + NatSpec)
   TeamCredential.sol        ERC721 credencial (OpenZeppelin)
   interfaces/ITeamCredential.sol  Interfaz entre registry y credencial
+  GAS-OPTIMIZATION-REPORT.md Análisis de costos de gas, con las mediciones
+  gas-snapshot.json            Mediciones de gas, una entrada por medición
 test/
-  TeamRegistry.test.ts      23 tests: sybil, anti-doxxeo, commit-reveal, reveal, rosterRoot
-  TeamCredential.test.ts    5 tests: permisos, metadata, flujo completo
+  TeamRegistry.test.ts      25 tests: sybil, anti-doxxeo, commit-reveal, reveal, rosterRoot, empaquetado
+  TeamCredential.test.ts    4 tests: registry fijo, permisos, metadata, flujo completo
   helpers/setup.ts          Fixtures + generación de proofs ZK off-chain
 deploy/
-  deploy.ts                 Deploy completo a una red (Sepolia por defecto)
+  deploy.ts                 Deploy completo a una red (Sepolia por defecto), reutiliza el stack Semaphore
   interact.ts               Corre el flujo on-chain con identidades nuevas
+  semaphore-stack.json      Direcciones del stack Semaphore reutilizable, por red
   README.md                 Instrucciones de deploy y verificación
 scripts/
   demo.ts                   Flujo completo narrado (para el video)
@@ -133,6 +137,10 @@ scripts/
   lib/protocol.ts           Helpers de deploy y generación de proofs
   export-abis.mjs           Exporta los ABIs a ../frontend/lib/abis (npm run export:abis)
   sync-frontend-env.mjs     Escribe ../frontend/.env.local desde deployments/ (npm run sync:frontend-env)
+  gas-profile.ts            Perfilador de gas (despliega y mide el flujo completo)
+  gas-compare.mjs           Compara dos entradas de gas-snapshot.json
+  gas-size.ts               Tamaño del bytecode desplegado de nuestros contratos
+  gas-run.sh                Corre el perfilador con un nombre
 security/
   slither-report.md         Triage de findings de Slither
 ```
@@ -146,9 +154,11 @@ Instrucciones completas en [`deploy/README.md`](deploy/README.md). Resumen:
 ```bash
 cp .env.example .env       # completar SEPOLIA_RPC_URL, DEPLOYER_PRIVATE_KEY, ETHERSCAN_API_KEY
 npx hardhat run deploy/deploy.ts --network sepolia
-npx hardhat verify --network sepolia <TEAM_CREDENTIAL>
+npx hardhat verify --network sepolia <TEAM_CREDENTIAL> <TEAM_REGISTRY_ADDRESS>
 npx hardhat verify --network sepolia <TEAM_REGISTRY> <SEMAPHORE_ADDRESS>
 ```
+
+`TeamCredential` se despliega con la dirección del `TeamRegistry` como argumento del constructor, así que el registry se despliega primero. El stack de Semaphore (verificador, PoseidonT3 y Semaphore) se reutiliza entre despliegues: las direcciones quedan en [`deploy/semaphore-stack.json`](deploy/semaphore-stack.json) y se pueden pisar con `SEMAPHORE_ADDRESS`, `SEMAPHORE_VERIFIER_ADDRESS` y `POSEIDON_T3_ADDRESS`.
 
 ## Red utilizada y contratos desplegados
 
@@ -166,13 +176,34 @@ npx hardhat verify --network sepolia <TEAM_REGISTRY> <SEMAPHORE_ADDRESS>
 
 | Paso | Transacción |
 |---|---|
-| addCourseMember | `0x…` |
+| addCourseMembers | `0x…` |
 | createTeam | `0x…` |
 | requestJoin | `0x…` |
 | acceptRequest | `0x…` |
 | reveal | `0x…` |
 | claimCredential | `0x…` |
 
+
+## Costos de gas
+
+El análisis completo, con las mediciones antes y después de cada cambio, está en
+[`GAS-OPTIMIZATION-REPORT.md`](GAS-OPTIMIZATION-REPORT.md). Resumen de lo aplicado:
+
+| Ítem | Antes | Después |
+|---|---|---|
+| Deploy del stack completo | 11,972,738 | 2,832,401 (reutilizando Semaphore) |
+| Flujo de un equipo (5 tx) | 1,096,829 | 1,034,042 |
+
+- El stack de Semaphore no tiene estado en el verificador ni en la librería Poseidon, y cada registry crea su propio grupo. Se despliega una vez y se reutiliza.
+- `Team` empaqueta `admin`, `maxMembers` y `revealAtBlock` en un solo slot, y el estado "revelado" se deriva de `rosterRoot` en vez de un bool aparte.
+- `nonReentrant` usa `ReentrancyGuardTransient` (EIP-1153): misma protección, sin escribir un slot de storage.
+- La metadata CBOR del compilador está desactivada: son 53 bytes menos de code deposit por contrato.
+- `addCourseMembers` inscribe a varios alumnos en una sola transacción.
+
+```bash
+npx hardhat run scripts/gas-profile.ts     # perfilador, escribe gas-snapshot.json
+node scripts/gas-compare.mjs baseline applied
+```
 
 ## Decisiones de diseño
 
@@ -202,8 +233,8 @@ npx hardhat verify --network sepolia <TEAM_REGISTRY> <SEMAPHORE_ADDRESS>
 
 - `validateProof` de Semaphore quema nullifiers: imposible postularse dos veces al mismo equipo.
 - El message del proof incluye `keccak256(presentation, claimCommitment)`: ni la carta ni el commitment pueden alterarse.
-- Checks-Effects-Interactions en todas las funciones con estado y `ReentrancyGuard` (`nonReentrant`) en las funciones con llamadas externas.
+- Checks-Effects-Interactions en todas las funciones con estado y `ReentrancyGuardTransient` (`nonReentrant`) en las funciones con llamadas externas.
 - Errores custom (sin strings) y eventos para cada transición de estado.
-- `Semaphore`, `courseGroupId` y `SNARK_FIELD_SIZE` son `immutable`/`constant`; `unchecked` en incrementos que no pueden desbordar.
-- OZ v5: `Ownable`, `ERC721`, `ReentrancyGuard`. Sin dependencias de librerías externas más allá de Semaphore/OZ.
+- `Semaphore`, `courseGroupId`, `SNARK_FIELD_SIZE` y el `registry` de la credencial son `immutable`/`constant`; `unchecked` en incrementos que no pueden desbordar.
+- OZ v5: `Ownable`, `ERC721`, `ReentrancyGuardTransient`. Sin dependencias de librerías externas más allá de Semaphore/OZ.
 - **Tests:** miembro entra; no-miembro revert; doble postulación revert; mensaje alterado revert; claim con salt incorrecto revert; claim antes de aceptación revert; claim antes de revelar revert; reveal prematuro revert; equipo lleno revert; `rosterRoot` determinista; NFT a address desechable y no al sender.

@@ -22,20 +22,9 @@ before(async function () {
 });
 
 describe("TeamCredential", function () {
-  it("lets the owner set the registry once", async function () {
-    await expect(d.credential.connect(d.signers.eve).setRegistry(d.signers.eve.address)).to.be.revertedWithCustomError(
-      d.credential,
-      "OwnableUnauthorizedAccount"
-    );
-  });
+  it("binds the registry at construction and refuses everyone else", async function () {
+    expect(await d.credential.registry()).to.equal(await d.registry.getAddress());
 
-  it("rejects setting the registry a second time", async function () {
-    await expect(
-      d.credential.connect(d.signers.owner).setRegistry(d.signers.alice.address)
-    ).to.be.revertedWithCustomError(d.credential, "RegistryAlreadySet");
-  });
-
-  it("rejects direct minting outside the team flow", async function () {
     await expect(d.credential.connect(d.signers.alice).mint(d.signers.alice.address, 0)).to.be.revertedWithCustomError(
       d.credential,
       "NotRegistry"

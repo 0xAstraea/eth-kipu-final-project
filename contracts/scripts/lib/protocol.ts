@@ -73,9 +73,8 @@ export async function deployProtocolForDemo(signers: any[], ethers: any): Promis
     libraries: { [POSEIDON_LINK_KEY]: await poseidonT3.getAddress() }
   });
   const semaphore = await semaphoreFactory.deploy(await verifier.getAddress());
-  const credential = await ethers.deployContract("TeamCredential");
   const registry = await ethers.deployContract("TeamRegistry", [await semaphore.getAddress()]);
-  await credential.setRegistry(await registry.getAddress());
+  const credential = await ethers.deployContract("TeamCredential", [await registry.getAddress()]);
   await registry.connect(owner).setCredential(await credential.getAddress());
 
   const identities = {
@@ -87,9 +86,9 @@ export async function deployProtocolForDemo(signers: any[], ethers: any): Promis
   const commitments: bigint[] = [];
   for (const name of ["alice", "bob", "charlie"] as const) {
     const commitment = identities[name].commitment;
-    await registry.connect(owner).addCourseMember(commitment);
     commitments.push(commitment);
   }
+  await registry.connect(owner).addCourseMembers(commitments);
 
   const groupId: bigint = await registry.courseGroupId();
 

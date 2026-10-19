@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import {ISemaphore} from "@semaphore-protocol/contracts/interfaces/ISemaphore.sol";
 import {ITeamCredential} from "./interfaces/ITeamCredential.sol";
 
@@ -17,7 +17,7 @@ import {SemaphoreVerifier} from "@semaphore-protocol/contracts/base/SemaphoreVer
 /// application time; it is committed as a hash and only revealed (optionally) when they
 /// claim their credential NFT. The Semaphore group is administered by this contract so
 /// that only the course owner can add members.
-contract TeamRegistry is Ownable, ReentrancyGuard {
+contract TeamRegistry is Ownable, ReentrancyGuardTransient {
     /// @notice BN254 scalar field size. Semaphore messages must be reduced modulo this
     /// value off-chain to stay consistent with the circuit.
     uint256 public constant SNARK_FIELD_SIZE =
@@ -33,14 +33,17 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
     address public credential;
 
     /// @notice A team created by a verified student.
+    /// @dev admin, maxMembers and revealAtBlock share one storage slot on purpose:
+    /// 20 + 4 + 8 bytes. A fresh storage slot costs 22,100 gas, so packing three fields
+    /// into one slot removes two slots per team.
     struct Team {
         address admin;
+        uint32 maxMembers;
+        uint64 revealAtBlock;
         string name;
         string description;
-        uint256 maxMembers;
-        uint256 revealAtBlock;
-        bool isRevealed;
-        /// @dev commitment over the sorted member nullifiers, set at reveal time.
+        /// @dev commitment over the sorted member nullifiers, set at reveal time. It also
+        /// carries the revealed state: a team is revealed exactly when its root is set.
         bytes32 rosterRoot;
         uint256[] memberNullifiers;
     }
@@ -90,8 +93,12 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
     error CredentialNotSet();
     /// @notice Thrown when the credential contract was already set.
     error CredentialAlreadySet();
-    /// @notice Thrown when a team is created with a maximum member count of zero.
+    /// @notice Thrown when a team is created with a maximum member count of zero or one
+    /// that does not fit the packed field.
     error InvalidMaxMembers();
+    /// @notice Thrown when a team is created with a reveal block that does not fit the
+    /// packed field.
+    error InvalidRevealAtBlock();
     /// @notice Thrown when the proof scope does not match the team id being created.
     error InvalidScope();
     /// @notice Thrown when operating on a team that does not exist.
@@ -160,6 +167,22 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
         emit CourseMemberAdded(courseGroupId, identityCommitment);
     }
 
+    /// @notice Adds several students to the course group in one transaction.
+    /// @dev Cheaper per student than one call per student: the tree insert, the event and
+    /// the base transaction cost are paid once.
+    /// @param identityCommitments The students' Semaphore identity commitments.
+    function addCourseMembers(uint256[] calldata identityCommitments) external onlyOwner nonReentrant {
+        semaphore.addMembers(courseGroupId, identityCommitments);
+
+        for (uint256 i = 0; i < identityCommitments.length; ) {
+            emit CourseMemberAdded(courseGroupId, identityCommitments[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     /// @notice Returns the id the next created team will have.
     function nextTeamId() external view returns (uint256) {
         return teamCounter;
@@ -182,7 +205,8 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
         uint256 revealAtBlock,
         ISemaphore.SemaphoreProof calldata proof
     ) external nonReentrant returns (uint256 teamId) {
-        if (maxMembers == 0) revert InvalidMaxMembers();
+        if (maxMembers == 0 || maxMembers > type(uint32).max) revert InvalidMaxMembers();
+        if (revealAtBlock > type(uint64).max) revert InvalidRevealAtBlock();
 
         teamId = teamCounter;
 
@@ -193,11 +217,10 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
 
         Team storage team = _teams[teamId];
         team.admin = msg.sender;
+        team.maxMembers = uint32(maxMembers);
+        team.revealAtBlock = uint64(revealAtBlock);
         team.name = name;
         team.description = description;
-        team.maxMembers = maxMembers;
-        team.revealAtBlock = revealAtBlock;
-        team.isRevealed = false;
         team.memberNullifiers.push(proof.nullifier);
 
         // Safe: teamId equals the current counter, so it can never exceed type(uint256).max.
@@ -227,7 +250,7 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
         Team storage team = _teams[teamId];
 
         if (team.maxMembers == 0) revert TeamDoesNotExist(teamId);
-        if (team.isRevealed) revert TeamAlreadyRevealed(teamId);
+        if (_isRevealed(team)) revert TeamAlreadyRevealed(teamId);
         if (team.memberNullifiers.length >= team.maxMembers) revert TeamIsFull(teamId);
 
         Application storage application = _applications[teamId][proof.nullifier];
@@ -245,8 +268,6 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
         // Effects: store the application keyed by the nullifier only. msg.sender is
         // deliberately not stored anywhere.
         application.claimCommitment = claimCommitment;
-        application.accepted = false;
-        application.claimed = false;
 
         emit JoinRequested(teamId, proof.nullifier, presentation);
     }
@@ -258,7 +279,7 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
 
         if (team.maxMembers == 0) revert TeamDoesNotExist(teamId);
         if (msg.sender != team.admin) revert NotTeamAdmin(teamId);
-        if (team.isRevealed) revert TeamAlreadyRevealed(teamId);
+        if (_isRevealed(team)) revert TeamAlreadyRevealed(teamId);
         if (team.memberNullifiers.length >= team.maxMembers) revert TeamIsFull(teamId);
 
         Application storage application = _applications[teamId][nullifier];
@@ -287,7 +308,7 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
         Team storage team = _teams[teamId];
 
         if (team.maxMembers == 0) revert TeamDoesNotExist(teamId);
-        if (!team.isRevealed) revert TeamNotRevealed(teamId);
+        if (!_isRevealed(team)) revert TeamNotRevealed(teamId);
 
         Application storage application = _applications[teamId][nullifier];
 
@@ -302,7 +323,7 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
         // Effects before the external mint call (Checks-Effects-Interactions).
         application.claimed = true;
 
-        _mintCredential(claimAddress, teamId);
+        ITeamCredential(credential).mint(claimAddress, teamId);
 
         emit CredentialClaimed(teamId, nullifier, claimAddress);
     }
@@ -316,7 +337,7 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
         Team storage team = _teams[teamId];
 
         if (team.maxMembers == 0) revert TeamDoesNotExist(teamId);
-        if (team.isRevealed) revert TeamAlreadyRevealed(teamId);
+        if (_isRevealed(team)) revert TeamAlreadyRevealed(teamId);
 
         uint256 memberCount = team.memberNullifiers.length;
         bool isFull = memberCount == team.maxMembers;
@@ -324,13 +345,20 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
 
         if (!isFull && !deadlinePassed) revert RevealConditionsNotMet(teamId);
 
-        team.isRevealed = true;
-
         uint256[] memory sortedMembers = team.memberNullifiers;
         _sort(sortedMembers);
+
+        // The root doubles as the revealed marker. A team always holds at least its
+        // creator, so the hashed array is never empty and the root is never zero.
         team.rosterRoot = keccak256(abi.encodePacked(sortedMembers));
 
         emit TeamRevealed(teamId, sortedMembers);
+    }
+
+    /// @dev Tells whether a team was already revealed. The roster root is written exactly
+    /// once, at reveal time, so it carries the revealed state on its own.
+    function _isRevealed(Team storage team) private view returns (bool) {
+        return team.rosterRoot != bytes32(0);
     }
 
     /// @dev Sorts a memory array of nullifiers in ascending order (insertion sort).
@@ -357,13 +385,6 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
         }
     }
 
-    /// @dev Calls TeamCredential.mint through a typed interface; revert reasons from the
-    /// credential contract bubble up automatically. The target is a trusted, owner-set
-    /// contract and the caller checked it is not the zero address.
-    function _mintCredential(address to, uint256 teamId) private {
-        ITeamCredential(credential).mint(to, teamId);
-    }
-
     /// @notice Returns the full team data.
     function getTeam(uint256 teamId)
         external
@@ -384,9 +405,9 @@ contract TeamRegistry is Ownable, ReentrancyGuard {
             team.admin,
             team.name,
             team.description,
-            team.maxMembers,
-            team.revealAtBlock,
-            team.isRevealed,
+            uint256(team.maxMembers),
+            uint256(team.revealAtBlock),
+            _isRevealed(team),
             team.memberNullifiers.length
         );
     }

@@ -2,17 +2,17 @@
 pragma solidity 0.8.28;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ITeamCredential} from "./interfaces/ITeamCredential.sol";
 
 /// @title TeamCredential
 /// @notice Soul-bound-style NFT credential issued when a student is accepted into a team.
-/// @dev The only entity allowed to mint is the TeamRegistry contract.
-contract TeamCredential is ERC721, Ownable, ITeamCredential {
+/// @dev The only entity allowed to mint is the TeamRegistry contract, whose address is
+/// fixed at construction.
+contract TeamCredential is ERC721, ITeamCredential {
     /// @notice Address of the TeamRegistry contract allowed to mint.
-    address public registry;
+    address public immutable registry;
 
     /// @notice Next token id to be minted (token ids start at 1).
     uint256 private _nextTokenId = 1;
@@ -20,29 +20,15 @@ contract TeamCredential is ERC721, Ownable, ITeamCredential {
     /// @notice Maps a token id to the team it certifies membership of.
     mapping(uint256 => uint256) public teamOf;
 
-    /// @notice Emitted when the registry is set.
-    event RegistrySet(address indexed registry);
-
     /// @notice Emitted when a credential is minted.
     event CredentialMinted(address indexed to, uint256 indexed tokenId, uint256 indexed teamId);
 
-    /// @notice Thrown when the registry was already set.
-    error RegistryAlreadySet();
-    /// @notice Thrown when the registry address is zero.
-    error InvalidRegistry();
     /// @notice Thrown when a caller other than the registry attempts to mint.
     error NotRegistry();
 
-    constructor() ERC721("TeamUp Credential", "TEAMUP") Ownable(msg.sender) {}
-
-    /// @notice Sets the registry allowed to mint. Can only be set once.
-    /// @param registry_ Address of the TeamRegistry contract.
-    function setRegistry(address registry_) external onlyOwner {
-        if (registry != address(0)) revert RegistryAlreadySet();
-        if (registry_ == address(0)) revert InvalidRegistry();
-
+    /// @param registry_ Address of the TeamRegistry contract allowed to mint.
+    constructor(address registry_) ERC721("TeamUp Credential", "TEAMUP") {
         registry = registry_;
-        emit RegistrySet(registry_);
     }
 
     /// @notice Mints a credential proving membership of a team.

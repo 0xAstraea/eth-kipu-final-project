@@ -103,6 +103,11 @@ export const teamRegistryAbi = [
   },
   {
     "inputs": [],
+    "name": "InvalidRevealAtBlock",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidScope",
     "type": "error"
   },
@@ -414,6 +419,19 @@ export const teamRegistryAbi = [
       }
     ],
     "name": "addCourseMember",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "identityCommitments",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "addCourseMembers",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

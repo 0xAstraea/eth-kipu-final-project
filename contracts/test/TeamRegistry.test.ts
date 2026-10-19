@@ -76,6 +76,24 @@ describe("TeamRegistry", function () {
         d.registry.connect(d.signers.alice).addCourseMember(d.identities.dave.commitment)
       ).to.be.revertedWithCustomError(d.registry, "OwnableUnauthorizedAccount");
     });
+
+    it("enrolls several members in one transaction", async function () {
+      const first = new Identity("batch-one");
+      const second = new Identity("batch-two");
+
+      await expect(d.registry.connect(d.signers.owner).addCourseMembers([first.commitment, second.commitment]))
+        .to.emit(d.registry, "CourseMemberAdded")
+        .withArgs(d.groupId, first.commitment);
+
+      expect(await d.semaphore.hasMember(d.groupId, first.commitment)).to.equal(true);
+      expect(await d.semaphore.hasMember(d.groupId, second.commitment)).to.equal(true);
+    });
+
+    it("rejects a batch added by a non-owner", async function () {
+      await expect(
+        d.registry.connect(d.signers.alice).addCourseMembers([new Identity("batch-three").commitment])
+      ).to.be.revertedWithCustomError(d.registry, "OwnableUnauthorizedAccount");
+    });
   });
 
   describe("createTeam", function () {
@@ -111,6 +129,24 @@ describe("TeamRegistry", function () {
       await expect(
         d.registry.connect(d.signers.alice).createTeam("TeamUp", "x", 3, 0, proof)
       ).to.be.revertedWithCustomError(d.registry, "InvalidScope");
+    });
+
+    it("rejects a max member count that does not fit the packed field", async function () {
+      const teamId = await d.registry.nextTeamId();
+      const proof = await makeCreateProof(d.identities.alice, buildGroup(d.commitments), teamId);
+
+      await expect(
+        d.registry.connect(d.signers.alice).createTeam("TeamUp", "x", 2n ** 32n, 0, proof)
+      ).to.be.revertedWithCustomError(d.registry, "InvalidMaxMembers");
+    });
+
+    it("rejects a reveal block that does not fit the packed field", async function () {
+      const teamId = await d.registry.nextTeamId();
+      const proof = await makeCreateProof(d.identities.alice, buildGroup(d.commitments), teamId);
+
+      await expect(
+        d.registry.connect(d.signers.alice).createTeam("TeamUp", "x", 3, 2n ** 64n, proof)
+      ).to.be.revertedWithCustomError(d.registry, "InvalidRevealAtBlock");
     });
   });
 

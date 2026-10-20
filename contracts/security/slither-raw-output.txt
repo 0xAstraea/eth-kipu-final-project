@@ -1,0 +1,36 @@
+'npx hardhat clean' running (wd: C:\Users\maraz\Desktop\personall\final-project\contracts)
+'npx hardhat clean --global' running (wd: C:\Users\maraz\Desktop\personall\final-project\contracts)
+'npx hardhat compile --force' running (wd: C:\Users\maraz\Desktop\personall\final-project\contracts)
+INFO:Detectors:
+Detector: reentrancy-no-eth
+Reentrancy in TeamRegistry.createTeam(string,string,uint256,uint256,ISemaphore.SemaphoreProof) (contracts/TeamRegistry.sol#218-249):
+	External calls:
+	- semaphore.validateProof(courseGroupId,proof) (contracts/TeamRegistry.sol#233)
+	State variables written after the call(s):
+	- teamCounter = teamId + 1 (contracts/TeamRegistry.sol#245)
+	TeamRegistry.teamCounter (contracts/TeamRegistry.sol#59) can be used in cross function reentrancies:
+	- TeamRegistry.nextTeamId() (contracts/TeamRegistry.sol#204-206)
+	- TeamRegistry.teamCounter (contracts/TeamRegistry.sol#59)
+Reentrancy in TeamRegistry.requestJoin(uint256,string,bytes32,ISemaphore.SemaphoreProof) (contracts/TeamRegistry.sol#261-290):
+	External calls:
+	- semaphore.validateProof(courseGroupId,proof) (contracts/TeamRegistry.sol#283)
+	State variables written after the call(s):
+	- application.claimCommitment = claimCommitment (contracts/TeamRegistry.sol#287)
+	TeamRegistry._applications (contracts/TeamRegistry.sol#65) can be used in cross function reentrancies:
+	- TeamRegistry.acceptRequest(uint256,uint256) (contracts/TeamRegistry.sol#296-313)
+	- TeamRegistry.getApplication(uint256,uint256) (contracts/TeamRegistry.sol#464-472)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2
+INFO:Detectors:
+Detector: reentrancy-benign
+Reentrancy in TeamRegistry.createTeam(string,string,uint256,uint256,ISemaphore.SemaphoreProof) (contracts/TeamRegistry.sol#218-249):
+	External calls:
+	- semaphore.validateProof(courseGroupId,proof) (contracts/TeamRegistry.sol#233)
+	State variables written after the call(s):
+	- team.admin = msg.sender (contracts/TeamRegistry.sol#236)
+	- team.maxMembers = uint32(maxMembers) (contracts/TeamRegistry.sol#237)
+	- team.revealAtBlock = uint64(revealAtBlock) (contracts/TeamRegistry.sol#238)
+	- team.name = name (contracts/TeamRegistry.sol#239)
+	- team.description = description (contracts/TeamRegistry.sol#240)
+	- team.memberNullifiers.push(proof.nullifier) (contracts/TeamRegistry.sol#241)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+INFO:Slither:. analyzed (33 contracts with 102 detectors), 3 result(s) found

@@ -65,26 +65,42 @@ contract TeamRegistry is Ownable, ReentrancyGuardTransient {
     mapping(uint256 => mapping(uint256 => Application)) private _applications;
 
     /// @notice Emitted when a student commitment is added to the course group.
+    /// @param groupId Id of the Semaphore group that holds the course members.
+    /// @param identityCommitment The student's Semaphore identity commitment.
     event CourseMemberAdded(uint256 indexed groupId, uint256 identityCommitment);
 
     /// @notice Emitted when the credential contract is set.
+    /// @param credential Address of the TeamCredential contract allowed to mint.
     event CredentialSet(address indexed credential);
 
     /// @notice Emitted when a team is created.
+    /// @param teamId Id of the new team.
+    /// @param admin Address of the team administrator, the creator.
+    /// @param name Public name of the team.
+    /// @param maxMembers Maximum number of members, including the creator.
     event TeamCreated(uint256 indexed teamId, address indexed admin, string name, uint256 maxMembers);
 
     /// @notice Emitted when a student applies to a team. Deliberately contains the
     /// nullifier and never the applicant address.
+    /// @param teamId Id of the team the student applied to.
+    /// @param nullifier Pseudonym of the applicant.
+    /// @param presentation Free-text message the applicant sent with the application.
     event JoinRequested(uint256 indexed teamId, uint256 indexed nullifier, string presentation);
 
     /// @notice Emitted when a team admin accepts an applicant.
+    /// @param teamId Id of the team that accepted the applicant.
+    /// @param nullifier Pseudonym of the accepted applicant.
     event JoinAccepted(uint256 indexed teamId, uint256 indexed nullifier);
 
     /// @notice Emitted when an accepted member claims their credential NFT.
+    /// @param teamId Id of the team the credential certifies.
+    /// @param nullifier Pseudonym of the claimant.
     /// @param claimAddress Address chosen by the claimant (may be a throwaway address).
     event CredentialClaimed(uint256 indexed teamId, uint256 indexed nullifier, address indexed claimAddress);
 
     /// @notice Emitted when a team is revealed (full or deadline reached).
+    /// @param teamId Id of the revealed team.
+    /// @param memberNullifiers The member pseudonyms, sorted ascending.
     event TeamRevealed(uint256 indexed teamId, uint256[] memberNullifiers);
 
     /// @notice Thrown when a caller other than the course owner performs an owner-only action.
@@ -184,6 +200,7 @@ contract TeamRegistry is Ownable, ReentrancyGuardTransient {
     }
 
     /// @notice Returns the id the next created team will have.
+    /// @return teamId Id that the next createTeam call will assign.
     function nextTeamId() external view returns (uint256) {
         return teamCounter;
     }
@@ -274,6 +291,8 @@ contract TeamRegistry is Ownable, ReentrancyGuardTransient {
 
     /// @notice Accepts an applicant identified by their nullifier.
     /// @dev Only callable by the team admin.
+    /// @param teamId Id of the team the applicant applied to.
+    /// @param nullifier Pseudonym of the applicant to accept.
     function acceptRequest(uint256 teamId, uint256 nullifier) external {
         Team storage team = _teams[teamId];
 
@@ -386,6 +405,14 @@ contract TeamRegistry is Ownable, ReentrancyGuardTransient {
     }
 
     /// @notice Returns the full team data.
+    /// @param teamId Id of the team to read.
+    /// @return admin Address of the team administrator.
+    /// @return name Public name of the team.
+    /// @return description Public description of the team.
+    /// @return maxMembers Maximum number of members, including the creator.
+    /// @return revealAtBlock Block from which the team can be revealed even if not full.
+    /// @return isRevealed Whether the team was already revealed.
+    /// @return membersCount Number of members currently in the team.
     function getTeam(uint256 teamId)
         external
         view
@@ -413,17 +440,27 @@ contract TeamRegistry is Ownable, ReentrancyGuardTransient {
     }
 
     /// @notice Returns the nullifiers of the team members.
+    /// @param teamId Id of the team to read.
+    /// @return memberNullifiers The member pseudonyms, in acceptance order.
     function getTeamMembers(uint256 teamId) external view returns (uint256[] memory) {
         return _teams[teamId].memberNullifiers;
     }
 
     /// @notice Returns the roster commitment of a team, set when the team is revealed.
     /// @dev Equal to keccak256(abi.encodePacked(sorted member nullifiers)); zero until reveal.
+    /// @param teamId Id of the team to read.
+    /// @return rosterRoot Commitment over the sorted member nullifiers.
     function getTeamRosterRoot(uint256 teamId) external view returns (bytes32) {
         return _teams[teamId].rosterRoot;
     }
 
     /// @notice Returns an application by team and nullifier.
+    /// @param teamId Id of the team the application belongs to.
+    /// @param nullifier Pseudonym of the applicant.
+    /// @return claimCommitment keccak256(abi.encode(claimAddress, salt)), zero when there
+    /// is no application.
+    /// @return accepted Whether the team admin accepted the application.
+    /// @return claimed Whether the credential was already claimed.
     function getApplication(uint256 teamId, uint256 nullifier)
         external
         view

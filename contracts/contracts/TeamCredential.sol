@@ -25,9 +25,13 @@ contract TeamCredential is ERC721, ITeamCredential {
 
     /// @notice Thrown when a caller other than the registry attempts to mint.
     error NotRegistry();
+    /// @notice Thrown when the registry address is zero.
+    error InvalidRegistry();
 
     /// @param registry_ Address of the TeamRegistry contract allowed to mint.
     constructor(address registry_) ERC721("TeamUp Credential", "TEAMUP") {
+        if (registry_ == address(0)) revert InvalidRegistry();
+
         registry = registry_;
     }
 
@@ -53,6 +57,7 @@ contract TeamCredential is ERC721, ITeamCredential {
     }
 
     /// @notice Returns the next token id that will be minted.
+    /// @return tokenId Id that the next mint will assign.
     function nextTokenId() external view returns (uint256) {
         return _nextTokenId;
     }

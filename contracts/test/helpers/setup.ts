@@ -4,7 +4,10 @@ import { Group } from "@semaphore-protocol/group";
 import { generateProof } from "@semaphore-protocol/proof";
 import { AbiCoder, keccak256, solidityPackedKeccak256 } from "ethers";
 
-const { ethers } = await hre.network.create();
+/// The connection every fixture and every test file must share. Each
+/// `hre.network.create()` call spins up its own in-memory chain, so a contract
+/// deployed from one connection is invisible from another.
+export const { ethers } = await hre.network.create();
 
 /// BN254 scalar field. Must match TeamRegistry.SNARK_FIELD_SIZE.
 export const SNARK_FIELD_SIZE =

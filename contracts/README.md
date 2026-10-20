@@ -87,20 +87,26 @@ pnpm install
 pnpm run compile            # compila los contratos
 ```
 
+El compilador no emite warnings sobre el código propio. El único aviso es el de OpenZeppelin
+sobre transient storage (EIP-1153), que viene de `TransientSlot.sol` y dice textualmente que
+el uso en un guard de reentrada es seguro. Está analizado: el guard se usa solo como
+`nonReentrant`, y el estado transitorio se limpia al final de cada llamada.
+
 ## Tests y coverage
 
 ```bash
-# suite completa del contrato (32 tests)
+# suite completa del contrato (46 tests)
 pnpm --filter @teamup/contracts test
 
-# la suite completa del repo: contrato + frontend (48 tests)
+# la suite completa del repo: contrato + frontend (62 tests)
 pnpm test
 
 # coverage con la herramienta built-in de Hardhat 3
 pnpm run coverage
 ```
 
-Resultado del coverage sobre el código propio: **87.90% de líneas y 89.05% de statements** (ambas por encima del 40% exigido). El reporte HTML queda en `coverage/html`.
+Resultado del coverage sobre el código propio: **100% de líneas y 100% de statements** en
+`TeamRegistry.sol` y `TeamCredential.sol`. El reporte HTML queda en `coverage/html`.
 
 ## Análisis estático (Slither)
 
@@ -110,6 +116,10 @@ slither . --filter-paths "node_modules|openzeppelin|semaphore|poseidon"
 ```
 
 El triage completo de los findings (corregidos y aceptados con justificación) está en [`security/slither-report.md`](security/slither-report.md).
+
+Última corrida sobre el código final: **33 contratos analizados, 102 detectores, 3 findings**,
+los tres aceptados con justificación técnica. La salida cruda no se versiona: se regenera
+con el comando de arriba.
 
 ## Demo local
 
@@ -167,13 +177,28 @@ pnpm --filter @teamup/contracts exec hardhat verify --network sepolia <TEAM_REGI
 
 ## Red utilizada y contratos desplegados
 
-> _Pendiente: completar tras desplegar en Sepolia._
+> _Pendiente: completar tras desplegar en Sepolia con credenciales reales._
+
+**Cómo desplegar y verificar (desde la raíz del repo):**
+
+```bash
+pnpm run deploy:sepolia     # despliega y escribe contracts/deployments/sepolia.json
+pnpm run verify:sepolia     # verifica los 5 contratos en Etherscan
+pnpm run interact:sepolia   # corre el flujo principal e imprime los hashes de cada paso
+```
+
+`deploy:sepolia` imprime las direcciones y las guarda en `contracts/deployments/sepolia.json`.
+`verify:sepolia` lee ese archivo y verifica cada contrato con los argumentos de su
+constructor. `interact:sepolia` corre el flujo completo con identidades nuevas e imprime el
+hash de cada transacción.
 
 | Contrato | Dirección | Código verificado |
 |---|---|---|
-| TeamRegistry | `0x…` | [Sepolia Etherscan](https://sepolia.etherscan.io/) |
-| TeamCredential | `0x…` | [Sepolia Etherscan](https://sepolia.etherscan.io/) |
-| Semaphore (PSE) | `0x…` | [Sepolia Etherscan](https://sepolia.etherscan.io/) |
+| TeamRegistry | `0x…` | [Sepolia Etherscan](https://sepolia.etherscan.io/address/0x…) |
+| TeamCredential | `0x…` | [Sepolia Etherscan](https://sepolia.etherscan.io/address/0x…) |
+| Semaphore (PSE) | `0x…` | [Sepolia Etherscan](https://sepolia.etherscan.io/address/0x…) |
+| SemaphoreVerifier (PSE) | `0x…` | [Sepolia Etherscan](https://sepolia.etherscan.io/address/0x…) |
+| PoseidonT3 | `0x…` | [Sepolia Etherscan](https://sepolia.etherscan.io/address/0x…) |
 
 ## Evidencia on-chain (flujo principal)
 

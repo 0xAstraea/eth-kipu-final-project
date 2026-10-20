@@ -40,7 +40,7 @@ pnpm run build && pnpm --filter @teamup/frontend start
 ## Tests
 
 ```bash
-pnpm test                                  # desde la raiz: contrato + frontend (48 tests)
+pnpm test                                  # desde la raiz: contrato + frontend (62 tests)
 pnpm --filter @teamup/frontend test        # solo el frontend (16 tests)
 ```
 
@@ -73,7 +73,7 @@ Para una demo con dos roles, usá dos navegadores/perfiles: uno con la cuenta ow
 
 ## Evidencia
 
-- `pnpm test` — 48 tests, sin errores.
+- `pnpm test` — 62 tests, sin errores.
 - `pnpm run lint` — sin errores.
 - `pnpm run build` — compila y typechequea sin errores.
 - SSR: con la red local y el protocolo desplegado, `curl http://localhost:3000` devuelve el HTML con los equipos leídos on-chain.

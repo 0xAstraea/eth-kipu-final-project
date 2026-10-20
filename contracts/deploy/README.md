@@ -51,7 +51,15 @@ deployed stack is written back to `semaphore-stack.json`, so the next deployment
 
 ## 3. Verify
 
-Use the addresses printed by the deploy step and the constructor arguments:
+One command verifies the five contracts with their constructor arguments, read from
+`deployments/<network>.json`:
+
+```bash
+pnpm run verify:sepolia
+```
+
+It writes the library mapping that `Semaphore` needs into `deployments/libraries.mjs` and
+submits each contract to every enabled explorer. The manual equivalent is:
 
 ```bash
 pnpm --filter @teamup/contracts exec hardhat verify --network sepolia <TeamCredential> <TeamRegistry>

@@ -119,7 +119,7 @@
     }
   },
   "applied": {
-    "measuredAt": "2026-10-20T02:58:34.809Z",
+    "measuredAt": "2026-10-20T03:47:50.026Z",
     "rows": [
       {
         "label": "deploy SemaphoreVerifier",
@@ -139,7 +139,7 @@
       },
       {
         "label": "deploy TeamCredential",
-        "gas": 1196510
+        "gas": 1197183
       },
       {
         "label": "TeamRegistry.setCredential",
@@ -219,7 +219,7 @@
       }
     ],
     "flowTotal": 1034054,
-    "deployTotal": 11933330,
+    "deployTotal": 11934003,
     "sizes": {
       "TeamRegistry": 6857,
       "TeamCredential": 4936

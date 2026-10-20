@@ -12,6 +12,10 @@
   Las dependencias externas (`@openzeppelin/contracts`, `@semaphore-protocol/contracts`,
   `poseidon-solidity`) se excluyen del análisis.
 - **Salida cruda:** no se versiona. Se regenera con el comando de arriba.
+- **Nota de resolución de imports:** con pnpm, `crytic-compile` resuelve los imports de los
+  paquetes transitivos contra `contracts/node_modules`. Por eso `@zk-kit/lean-imt.sol` y
+  `poseidon-solidity` están declarados como dependencias de desarrollo del paquete de
+  contratos: sin ellos, Slither no puede compilar las dependencias de Semaphore.
 
 ## Resumen
 
@@ -19,14 +23,19 @@ Corrida inicial: **9 findings**. Tras las correcciones: **3 findings**, todos lo
 aceptados con justificación (la llamada externa es a un contrato inmutable de confianza y las
 funciones están protegidas con `nonReentrant`).
 
+Corrida sobre el código final (con el registro empaquetado, el guard transient y la credencial
+con registry inmutable): **33 contratos analizados, 102 detectores, 3 findings**, los mismos
+tres, todos aceptados.
+
 | # | Detector | Contrato | Estado |
 |---|----------|----------|--------|
 | 1 | `reentrancy-events` (x4) | TeamRegistry | **Corregido** (`nonReentrant`) |
 | 2 | `assembly` | TeamRegistry `_mintCredential` | **Corregido** (interfaz tipada) |
 | 3 | `low-level-calls` | TeamRegistry `_mintCredential` | **Corregido** (interfaz tipada) |
 | 4 | `missing-inheritance` | TeamCredential | **Corregido** (hereda `ITeamCredential`) |
-| 5 | `reentrancy-no-eth` (x2) | TeamRegistry `createTeam`, `requestJoin` | **Aceptado** |
-| 6 | `reentrancy-benign` | TeamRegistry `createTeam` | **Aceptado** |
+| 5 | `missing-zero-check` | TeamCredential constructor | **Corregido** (revierte con `InvalidRegistry`) |
+| 6 | `reentrancy-no-eth` (x2) | TeamRegistry `createTeam`, `requestJoin` | **Aceptado** |
+| 7 | `reentrancy-benign` | TeamRegistry `createTeam` | **Aceptado** |
 
 ## Correcciones aplicadas
 
@@ -45,6 +54,12 @@ funciones están protegidas con `nonReentrant`).
 
 3. **`missing-inheritance` (corregido).** `TeamCredential` ahora hereda explícitamente de
    `ITeamCredential` (`contract TeamCredential is ERC721, ITeamCredential`).
+
+4. **`missing-zero-check` (corregido).** La segunda corrida, sobre el código final, detectó que
+   el constructor de `TeamCredential` aceptaba la dirección cero al fijarse el registry en el
+   constructor en lugar de por `setRegistry`. Se restituyó la validación: el constructor
+   revierte con `InvalidRegistry` si `registry_` es la dirección cero. Hay un test que lo cubre
+   (`test/TeamRegistry.guards.test.ts`).
 
    Nota posterior a la optimización de gas: el guard pasó de `ReentrancyGuard` a
    `ReentrancyGuardTransient` (EIP-1153). La protección es la misma, pero el estado del guard

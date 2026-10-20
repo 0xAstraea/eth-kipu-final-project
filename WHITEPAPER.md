@@ -172,12 +172,13 @@ Semaphore` y `TeamRegistry ↔ TeamCredential`.
 
 ## 9. Testing y análisis estático
 
-- **32 tests** de Mocha que cubren el flujo principal y todos los reverts relevantes:
+- **46 tests** de Mocha que cubren el flujo principal y todos los reverts relevantes:
   no-miembro, doble postulación, mensaje alterado, claim con salt incorrecto, claim antes de
   aceptar, claim antes de revelar, reveal prematuro, equipo lleno, root del plantel
   determinista, y que la postulación nunca queda ligada al emisor.
-- **Coverage (`pnpm run coverage`)**: 87.9% de líneas y 89.1% de statements sobre el código
-  propio (`solidity-coverage` no desglosa ramas ni funciones).
+- **Coverage (`pnpm run coverage`)**: 100% de líneas y 100% de statements sobre el código
+  propio. La suite del frontend suma 16 tests más sobre el hashing que comparte con el
+  contrato.
 - **Slither** sobre `TeamRegistry` y `TeamCredential` con las dependencias externas excluidas.
 
 ## 10. Limitaciones del MVP

@@ -44,9 +44,15 @@ importers:
       '@types/node':
         specifier: ^26.6.5
         version: 26.6.5
+      '@zk-kit/lean-imt.sol':
+        specifier: ^2.0.1
+        version: 2.0.1
       hardhat:
         specifier: ^3.19.0
         version: 3.20.0
+      poseidon-solidity:
+        specifier: ^0.0.5
+        version: 0.0.5
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

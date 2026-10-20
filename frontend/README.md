@@ -54,15 +54,46 @@ La suite del frontend fija los valores que el contrato y el navegador tienen que
 - **Escrituras en el cliente.** Los componentes de wallet usan wagmi (`useWriteContract`).
 - **Pruebas ZK en el navegador.** `lib/semaphore.ts` reconstruye el grupo del curso a partir de los eventos `CourseMemberAdded` (Semaphore no expone enumeración de miembros on-chain) y genera el proof con `@semaphore-protocol/proof`. Todo el código ZK se carga con `import()` dinámico dentro de los handlers, para que el WASM de snarkjs nunca se evalúe durante el SSR/build.
 
+## Personas (pestañas por rol)
+
+La demo se maneja por **personas**, no por una sola identidad. Cada pestaña es un actor con sus
+propias identidades Semaphore y sus propias postulaciones, guardado todo en `localStorage`:
+
+- **Professor** — el dueño del curso. Su poder es **enrolar** identidades en el grupo Semaphore
+  (una a una o todas en una transacción con `addCourseMembers`). No acepta postulaciones: esa
+  decisión es del admin de cada equipo.
+- **Alumn 1, 2, 3…** — cada alumno tiene su pestaña: crea su identidad, crea equipos (con lo que
+  se vuelve admin de ese equipo), se postula a los equipos de otros, **acepta** a quienes se
+  postulan a sus equipos y reclama su credencial.
+
+El reparto de poderes es el del contrato, no una convención de la interfaz:
+
+| Acción | Quién puede | Cómo lo impone el contrato |
+|---|---|---|
+| Enrolar en el curso | Professor (owner) | `onlyOwner` |
+| Crear equipo | Cualquier miembro enrolado | `validateProof` + es admin |
+| Aceptar postulaciones | **Admin de ese equipo** | `msg.sender == team.admin` |
+| Revelar el equipo | Cualquiera | `reveal` es *permissionless* |
+| Reclamar la credencial | Cualquiera paga el gas | el NFT va al `claimAddress` fijado |
+
+Para saber qué pestaña es la dueña de cada equipo, la interfaz guarda un mapa local
+`teamId → persona` (`teamup-zk-team-owners`) que se escribe al crear el equipo; si el equipo se
+creó en otro navegador, se recurre al admin on-chain.
+
+Se pueden **agregar** personas (`+ Persona`), renombrarlas, borrarlas y **vincularles una
+wallet** (para recordar con qué cuenta hay que operar). El estado se migra solo: las
+identidades y postulaciones creadas antes de las personas quedan asignadas al profesor.
+
 ## Flujo en la interfaz
 
 1. **Conectar wallet** y, si hace falta, cambiar de red.
-2. **Crear identidad** (Semaphore) — solo se guarda en `localStorage`; el commitment es lo único que sale del navegador.
-3. **Enrolar** la identidad en el curso (solo la cuenta **owner** puede).
-4. **Crear equipo** (con proof ZK scope = teamId).
-5. **Postularse** (proof ZK scope = teamId, mensaje = `keccak256(presentation, claimCommitment)`); el `claimCommitment` fija el destinatario del NFT.
-6. El **admin** del equipo acepta postulaciones por nullifier; con el equipo completo, **cualquiera revela** el equipo (congela el plantel y guarda el `rosterRoot`).
-7. **Reclamar la credencial** (posible recién tras la revelación; NFT a la dirección elegida) y ver su metadata on-chain.
+2. **Elegir persona** en las pestañas: profesor o alumno.
+3. **Crear identidad** (Semaphore) — solo se guarda en `localStorage`; el commitment es lo único que sale del navegador.
+4. **Enrolar** la identidad en el curso (solo la cuenta **owner** puede; el profesor lo hace desde la pestaña Professor).
+5. **Crear equipo** (con proof ZK scope = teamId) — quien lo crea es su admin.
+6. **Postularse** (proof ZK scope = teamId, mensaje = `keccak256(presentation, claimCommitment)`); el `claimCommitment` fija el destinatario del NFT.
+7. El **admin del equipo** acepta postulaciones por nullifier; con el equipo completo, **cualquiera revela** el equipo (congela el plantel y guarda el `rosterRoot`).
+8. **Reclamar la credencial** (posible recién tras la revelación; NFT a la dirección elegida) y ver su metadata on-chain.
 
 Para una demo con dos roles, usá dos navegadores/perfiles: uno con la cuenta owner (docente) y otro con una cuenta distinta (alumno).
 

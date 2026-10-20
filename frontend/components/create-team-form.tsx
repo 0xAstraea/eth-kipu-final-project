@@ -1,19 +1,22 @@
 "use client";
 
+import { Button, Section, Select, TextInput } from "@/components/ui";
 import { teamRegistryAbi } from "@/lib/abis/teamRegistry";
 import { addresses } from "@/lib/config";
 import { createTeamProof } from "@/lib/semaphore";
-import type { IdentityView } from "@/lib/types";
+import type { IdentityView, Persona } from "@/lib/types";
 import { useState } from "react";
 import { useAccount, useReadContract, usePublicClient, useWriteContract } from "wagmi";
 
 type Props = {
+  persona: Persona;
   identities: IdentityView[];
   courseCommitments: string[];
-  onCreated: () => void;
+  /** Receives the id of the team that was just created. */
+  onCreated: (teamId: string) => void;
 };
 
-export function CreateTeamForm({ identities, courseCommitments, onCreated }: Props) {
+export function CreateTeamForm({ persona, identities, courseCommitments, onCreated }: Props) {
   const [identityId, setIdentityId] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -37,7 +40,7 @@ export function CreateTeamForm({ identities, courseCommitments, onCreated }: Pro
     setError("");
     const identity = enrolled.find((i) => i.id === identityId) ?? enrolled[0];
     if (!identity) {
-      setError("Create and enroll an identity first (only the course owner can enroll).");
+      setError("Create and enrol an identity first (only the course owner can enrol).");
       return;
     }
     if (nextTeamId === undefined) {
@@ -72,7 +75,7 @@ export function CreateTeamForm({ identities, courseCommitments, onCreated }: Pro
       setStatus("Team created.");
       setName("");
       setDescription("");
-      onCreated();
+      onCreated(nextTeamId.toString());
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setStatus("");
@@ -80,64 +83,61 @@ export function CreateTeamForm({ identities, courseCommitments, onCreated }: Pro
   }
 
   return (
-    <section className="rounded-lg border border-neutral-800 p-4">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-400">Create team</h2>
+    <Section
+      title="Create a team"
+      description={`${persona.name} creates the team and becomes its admin (member #1) with a ZK proof of course membership.`}
+    >
       <form onSubmit={submit} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-xs text-neutral-400">
             Team name
-            <input
+            <TextInput
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(event) => setName(event.target.value)}
               required
-              className="mt-1 w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+              className="mt-1"
+              placeholder="TeamUp"
             />
           </label>
           <label className="block text-xs text-neutral-400">
             Max members
-            <input
+            <TextInput
               type="number"
               min={1}
               value={maxMembers}
-              onChange={(e) => setMaxMembers(e.target.value)}
+              onChange={(event) => setMaxMembers(event.target.value)}
               required
-              className="mt-1 w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+              className="mt-1"
             />
           </label>
         </div>
         <label className="block text-xs text-neutral-400">
           Description
-          <input
+          <TextInput
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="mt-1 w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+            onChange={(event) => setDescription(event.target.value)}
+            className="mt-1"
+            placeholder="What this team is about"
           />
         </label>
-        <label className="block text-xs text-neutral-400">
-          Prove membership with identity
-          <select
-            value={identityId}
-            onChange={(e) => setIdentityId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
-          >
-            {enrolled.length === 0 && <option value="">no enrolled identity</option>}
-            {enrolled.map((identity) => (
-              <option key={identity.id} value={identity.id}>
-                {identity.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
-        >
+        {enrolled.length > 0 && (
+          <label className="block text-xs text-neutral-400">
+            Prove membership with identity
+            <Select value={identityId} onChange={(event) => setIdentityId(event.target.value)} className="mt-1">
+              {enrolled.map((identity) => (
+                <option key={identity.id} value={identity.id}>
+                  {identity.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+        )}
+        <Button type="submit" variant="primary" size="md" disabled={isPending}>
           {isPending ? "Working…" : "Generate proof & create team"}
-        </button>
+        </Button>
         {status && <p className="text-xs text-neutral-400">{status}</p>}
         {error && <p className="text-xs text-red-400">{error}</p>}
       </form>
-    </section>
+    </Section>
   );
 }

@@ -1,15 +1,16 @@
 "use client";
 
+import { Badge, Button, Select, TextInput } from "@/components/ui";
 import { teamCredentialAbi } from "@/lib/abis/teamCredential";
 import { teamRegistryAbi } from "@/lib/abis/teamRegistry";
 import { addresses } from "@/lib/config";
 import { formatBig, shorten } from "@/lib/format";
 import { randomSalt } from "@/lib/identity";
 import { claimCommitmentOf, joinProof } from "@/lib/semaphore";
-import type { IdentityView, StoredClaim, TeamView } from "@/lib/types";
+import type { IdentityView, Persona, StoredClaim, TeamView } from "@/lib/types";
 import { useEffect, useMemo, useState } from "react";
 import { parseAbiItem, type Address } from "viem";
-import { useAccount, usePublicClient, useReadContracts, useWriteContract } from "wagmi";
+import { useAccount, useBlockNumber, usePublicClient, useReadContracts, useWriteContract } from "wagmi";
 
 const joinRequested = parseAbiItem(
   "event JoinRequested(uint256 indexed teamId, uint256 indexed nullifier, string presentation)"
@@ -27,6 +28,13 @@ type Application = { nullifier: string; presentation: string };
 
 type Props = {
   team: TeamView;
+  /**
+   * True when the active persona is the one that created this team, i.e. the team
+   * admin. Only the admin accepts applicants — that power comes from the contract
+   * (`msg.sender == team.admin`), not from being the course owner.
+   */
+  isTeamOwner: boolean;
+  persona: Persona;
   identities: IdentityView[];
   courseCommitments: string[];
   claims: StoredClaim[];
@@ -34,10 +42,20 @@ type Props = {
   onAddClaim: (claim: StoredClaim) => void;
 };
 
-export function TeamCard({ team, identities, courseCommitments, claims, onChanged, onAddClaim }: Props) {
+export function TeamCard({
+  team,
+  isTeamOwner,
+  persona,
+  identities,
+  courseCommitments,
+  claims,
+  onChanged,
+  onAddClaim
+}: Props) {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
+  const { data: blockNumber } = useBlockNumber();
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [identityId, setIdentityId] = useState("");
@@ -47,7 +65,7 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
   const [error, setError] = useState("");
   const [tokenMeta, setTokenMeta] = useState<Record<string, string>>({});
 
-  const isAdmin = address && team.admin.toLowerCase() === address.toLowerCase();
+  const isTeamAdmin = !!address && team.admin.toLowerCase() === address.toLowerCase();
   const teamClaims = useMemo(() => claims.filter((claim) => claim.teamId === team.id), [claims, team.id]);
   const enrolled = identities.filter((identity) => courseCommitments.includes(identity.commitment));
 
@@ -75,6 +93,8 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
     [applicationStates, teamClaims]
   );
 
+  // Applications are read in every tab: the team owner reviews them, and every persona
+  // needs them to detect "this identity already applied" before sending a doomed tx.
   useEffect(() => {
     if (!publicClient) return;
     let active = true;
@@ -215,7 +235,8 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
         claimAddress: recipient,
         salt: salt.toString(),
         presentation,
-        identityLabel: identity.label
+        identityLabel: identity.label,
+        personaId: persona.id
       });
       setBusy("Application submitted anonymously.");
       setPresentation("");
@@ -331,11 +352,15 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
   }
 
   const pending = applications.filter((app) => !team.members.includes(app.nullifier));
+  const full = team.members.length >= Number(team.maxMembers);
+  const deadlineReached =
+    team.revealAtBlock !== "0" && blockNumber !== undefined && blockNumber >= BigInt(team.revealAtBlock);
+  const canReveal = !team.isRevealed && (full || deadlineReached);
 
   return (
     <article className="rounded-lg border border-neutral-800 p-4">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h3 className="text-base font-semibold">
             #{team.id} {team.name}
           </h3>
@@ -343,21 +368,24 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
           <p className="mt-1 text-xs text-neutral-500">
             admin <span className="font-mono">{shorten(team.admin, 4)}</span> · {team.members.length}/
             {team.maxMembers} members
-            {team.isRevealed ? " · revealed" : ""}
           </p>
-          {team.isRevealed && (
-            <p className="mt-1 text-xs text-neutral-500">
-              roster root <span className="font-mono">{shorten(team.rosterRoot, 8)}</span>
-            </p>
-          )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            {team.isRevealed ? (
+              <Badge tone="emerald">revealed</Badge>
+            ) : (
+              <Badge tone={full ? "amber" : "neutral"}>{full ? "full · ready to reveal" : "forming"}</Badge>
+            )}
+            {team.isRevealed && (
+              <span className="text-xs text-neutral-500">
+                roster root <span className="font-mono">{shorten(team.rosterRoot, 6)}</span>
+              </span>
+            )}
+          </div>
         </div>
-        {!team.isRevealed && (isAdmin || team.members.length >= Number(team.maxMembers)) && (
-          <button
-            onClick={reveal}
-            className="rounded-md border border-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-900"
-          >
+        {canReveal && (
+          <Button onClick={reveal} title="Freeze the team and commit its roster">
             Reveal
-          </button>
+          </Button>
         )}
       </div>
 
@@ -372,79 +400,103 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
         </ul>
       </div>
 
-      {isAdmin && pending.length > 0 && !team.isRevealed && (
+      {isTeamOwner && (
         <div className="mt-3 rounded-md bg-neutral-900/60 p-3">
-          <p className="text-xs uppercase tracking-wide text-neutral-500">Pending applications</p>
-          <ul className="mt-2 space-y-2">
-            {pending.map((app) => (
-              <li key={app.nullifier} className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm">{app.presentation || "(no presentation)"}</p>
-                  <p className="font-mono text-xs text-neutral-500">{formatBig(app.nullifier, 8)}</p>
-                </div>
-                <button
-                  onClick={() => accept(app.nullifier)}
-                  className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-medium text-neutral-950 hover:bg-emerald-400"
-                >
-                  Accept
-                </button>
-              </li>
-            ))}
-          </ul>
+          <p className="text-xs uppercase tracking-wide text-neutral-500">
+            Applications to review ({pending.length})
+          </p>
+          {pending.length === 0 ? (
+            <p className="mt-2 text-xs text-neutral-500">No pending applications.</p>
+          ) : (
+            <ul className="mt-2 space-y-2">
+              {pending.map((app) => (
+                <li key={app.nullifier} className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm">{app.presentation || "(no presentation)"}</p>
+                    <p className="font-mono text-xs text-neutral-500">{formatBig(app.nullifier, 8)}</p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={() => accept(app.nullifier)}
+                    disabled={!isTeamAdmin}
+                    title={
+                      isTeamAdmin
+                        ? "Accept this nullifier into the team"
+                        : `Only the team admin wallet (${shorten(team.admin, 4)}) can accept`
+                    }
+                  >
+                    Accept
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!isTeamAdmin && (
+            <p className="mt-2 text-xs text-neutral-500">
+              You created this team, but accepting requires the admin wallet{" "}
+              <span className="font-mono">{shorten(team.admin, 4)}</span>.
+            </p>
+          )}
         </div>
       )}
 
-      {!team.isRevealed && team.members.length < Number(team.maxMembers) && (
+      {!team.isRevealed && full && (
+        <p className="mt-3 rounded-md bg-neutral-900/60 px-3 py-2 text-xs text-neutral-400">
+          This team is full. Revealing freezes the roster and unlocks the credentials — anyone can
+          trigger it, but the team owner usually does.
+        </p>
+      )}
+
+      {!team.isRevealed && !full && persona.role === "student" && (
         <form onSubmit={apply} className="mt-4 space-y-3 border-t border-neutral-800 pt-4">
           <p className="text-xs uppercase tracking-wide text-neutral-500">Apply anonymously</p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-xs text-neutral-400">
-              Membership identity
-              <select
-                value={identityId}
-                onChange={(e) => setIdentityId(e.target.value)}
-                className="mt-1 w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm"
-              >
-                {enrolled.length === 0 && <option value="">no enrolled identity</option>}
-                {enrolled.map((identity) => (
-                  <option key={identity.id} value={identity.id}>
-                    {identity.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-xs text-neutral-400">
-              Claim address (NFT recipient, optional)
-              <input
-                value={claimAddress}
-                onChange={(e) => setClaimAddress(e.target.value)}
-                placeholder={address ?? "0x…"}
-                className="mt-1 w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 font-mono text-sm"
-              />
-            </label>
-          </div>
-          <label className="block text-xs text-neutral-400">
-            Presentation (skills / motivation)
-            <input
-              value={presentation}
-              onChange={(e) => setPresentation(e.target.value)}
-              required
-              className="mt-1 w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={!!busy}
-            className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
-          >
-            {busy || "Generate proof & apply"}
-          </button>
+          {enrolled.length === 0 ? (
+            <p className="text-sm text-neutral-500">
+              {persona.name} has no enrolled identity yet. Create one below and ask the professor to enrol it.
+            </p>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs text-neutral-400">
+                  Membership identity
+                  <Select value={identityId} onChange={(event) => setIdentityId(event.target.value)} className="mt-1">
+                    {enrolled.map((identity) => (
+                      <option key={identity.id} value={identity.id}>
+                        {identity.label}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label className="block text-xs text-neutral-400">
+                  Claim address (NFT recipient, optional)
+                  <TextInput
+                    value={claimAddress}
+                    onChange={(event) => setClaimAddress(event.target.value)}
+                    placeholder={address ?? "0x…"}
+                    className="mt-1 font-mono"
+                  />
+                </label>
+              </div>
+              <label className="block text-xs text-neutral-400">
+                Presentation (skills / motivation)
+                <TextInput
+                  value={presentation}
+                  onChange={(event) => setPresentation(event.target.value)}
+                  required
+                  className="mt-1"
+                />
+              </label>
+              <Button type="submit" variant="primary" size="md" disabled={!!busy}>
+                {busy || "Generate proof & apply"}
+              </Button>
+            </>
+          )}
         </form>
       )}
 
       {teamClaims.length > 0 && (
         <div className="mt-4 space-y-2 border-t border-neutral-800 pt-4">
-          <p className="text-xs uppercase tracking-wide text-neutral-500">My claims</p>
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Your application</p>
           {teamClaims.map((stored, index) => {
             const meta = tokenMeta[stored.nullifier];
             const state = applicationStates?.[index];
@@ -456,14 +508,9 @@ export function TeamCard({ team, identities, courseCommitments, claims, onChange
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-xs text-neutral-400">{formatBig(stored.nullifier, 8)}</span>
                   {claimed ? (
-                    <span className="text-xs text-emerald-400">credential claimed</span>
+                    <Badge tone="emerald">credential claimed</Badge>
                   ) : accepted && team.isRevealed ? (
-                    <button
-                      onClick={() => claim(stored)}
-                      className="rounded-md border border-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-900"
-                    >
-                      Claim credential
-                    </button>
+                    <Button onClick={() => claim(stored)}>Claim credential</Button>
                   ) : accepted ? (
                     <span className="text-xs text-neutral-500">waiting for team reveal</span>
                   ) : (

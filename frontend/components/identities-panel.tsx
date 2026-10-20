@@ -1,9 +1,10 @@
 "use client";
 
+import { Badge, Button, Section } from "@/components/ui";
 import { teamRegistryAbi } from "@/lib/abis/teamRegistry";
 import { addresses } from "@/lib/config";
 import { formatBig, shorten } from "@/lib/format";
-import type { IdentityView } from "@/lib/types";
+import type { IdentityView, Persona } from "@/lib/types";
 import { useState } from "react";
 import { usePublicClient, useWriteContract } from "wagmi";
 
@@ -18,55 +19,27 @@ type Props = {
   onChanged: () => void;
 };
 
-export function IdentitiesPanel({
+/** Student view: the identities this persona owns, and whether the course accepted them. */
+export function IdentityPanel({
   identities,
   courseCommitments,
-  isOwner,
-  owner,
-  connected,
   onCreate,
-  onDelete,
-  onChanged
-}: Props) {
-  const { writeContractAsync, isPending } = useWriteContract();
-  const publicClient = usePublicClient();
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState("");
-
-  async function enroll(commitment: string) {
-    setError("");
-    try {
-      setBusy("Enrolling…");
-      const hash = await writeContractAsync({
-        address: addresses.registry,
-        abi: teamRegistryAbi,
-        functionName: "addCourseMember",
-        args: [BigInt(commitment)]
-      });
-      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
-      setBusy("");
-      onChanged();
-    } catch (err) {
-      setBusy("");
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
+  onDelete
+}: Omit<Props, "isOwner" | "owner" | "connected" | "onChanged">) {
   return (
-    <section className="rounded-lg border border-neutral-800 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">My identities</h2>
-        <button
-          onClick={onCreate}
-          className="rounded-md border border-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-900"
-        >
+    <Section
+      title="My identities"
+      description="A Semaphore identity proves course membership without revealing who you are."
+      actions={
+        <Button onClick={onCreate} variant="primary">
           + New identity
-        </button>
-      </div>
-
+        </Button>
+      }
+    >
       {identities.length === 0 ? (
         <p className="text-sm text-neutral-500">
-          Create a Semaphore identity. Only its commitment is stored; the private key never leaves your browser.
+          No identity yet. The private key is generated in your browser and never leaves it; only the
+          commitment is ever published.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -85,24 +58,151 @@ export function IdentitiesPanel({
                 </div>
                 <div className="flex items-center gap-2">
                   {enrolled ? (
-                    <span className="rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-400">enrolled</span>
+                    <Badge tone="emerald">enrolled in course</Badge>
                   ) : (
-                    <button
-                      onClick={() => enroll(identity.commitment)}
-                      disabled={isPending || !isOwner}
-                      title={isOwner ? "Enroll this identity in the course" : "Only the course owner can enroll"}
-                      className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-medium text-neutral-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Enroll in course
-                    </button>
+                    <Badge tone="amber">awaiting enrolment</Badge>
                   )}
-                  <button
-                    onClick={() => onDelete(identity.id)}
-                    className="rounded-md border border-neutral-800 px-2 py-1.5 text-xs text-neutral-400 hover:bg-neutral-900"
-                  >
+                  <Button variant="danger" onClick={() => onDelete(identity.id)}>
                     Delete
-                  </button>
+                  </Button>
                 </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Section>
+  );
+}
+
+type RosterProps = {
+  personas: Persona[];
+  identities: IdentityView[];
+  courseCommitments: string[];
+  isOwner: boolean;
+  owner?: string;
+  connected?: string;
+  onChanged: () => void;
+};
+
+/** Professor view: the course roster, one row per student persona. */
+export function CourseRoster({
+  personas,
+  identities,
+  courseCommitments,
+  isOwner,
+  owner,
+  connected,
+  onChanged
+}: RosterProps) {
+  const { writeContractAsync, isPending } = useWriteContract();
+  const publicClient = usePublicClient();
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+
+  const students = personas.filter((persona) => persona.role === "student");
+
+  async function enrollOne(commitment: string) {
+    setError("");
+    try {
+      setBusy("Enrolling…");
+      const hash = await writeContractAsync({
+        address: addresses.registry,
+        abi: teamRegistryAbi,
+        functionName: "addCourseMember",
+        args: [BigInt(commitment)]
+      });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
+      setBusy("");
+      onChanged();
+    } catch (err) {
+      setBusy("");
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function enrollAll(commitments: string[]) {
+    setError("");
+    try {
+      setBusy(`Enrolling ${commitments.length} students…`);
+      const hash = await writeContractAsync({
+        address: addresses.registry,
+        abi: teamRegistryAbi,
+        functionName: "addCourseMembers",
+        args: [commitments.map((c) => BigInt(c))]
+      });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
+      setBusy("");
+      onChanged();
+    } catch (err) {
+      setBusy("");
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  const pendingCommitments = identities
+    .filter((identity) => !courseCommitments.includes(identity.commitment))
+    .map((identity) => identity.commitment);
+
+  return (
+    <Section
+      title="Course roster"
+      description="Enrolling a commitment adds that student to the Semaphore group. Only you can do it."
+      actions={
+        pendingCommitments.length > 0 && (
+          <Button
+            variant="primary"
+            disabled={isPending || !isOwner}
+            onClick={() => enrollAll(pendingCommitments)}
+            title={isOwner ? "Enrol everyone pending in one transaction" : "Only the course owner can enrol"}
+          >
+            Enrol all pending ({pendingCommitments.length})
+          </Button>
+        )
+      }
+    >
+      {students.length === 0 ? (
+        <p className="text-sm text-neutral-500">No students yet. Add a student persona to start the roster.</p>
+      ) : (
+        <ul className="space-y-2">
+          {students.map((persona) => {
+            const own = identities.filter((identity) => identity.personaId === persona.id);
+            return (
+              <li key={persona.id} className="rounded-md bg-neutral-900/60 px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium">{persona.name}</p>
+                  <span className="text-xs text-neutral-500">
+                    {own.length === 0
+                      ? "no identity yet"
+                      : `${own.filter((i) => courseCommitments.includes(i.commitment)).length}/${own.length} enrolled`}
+                  </span>
+                </div>
+                {own.length > 0 && (
+                  <ul className="mt-2 space-y-1.5">
+                    {own.map((identity) => {
+                      const enrolled = courseCommitments.includes(identity.commitment);
+                      return (
+                        <li key={identity.id} className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-mono text-xs text-neutral-500">
+                            {identity.label} · {formatBig(identity.commitment)}
+                          </span>
+                          {enrolled ? (
+                            <Badge tone="emerald">enrolled</Badge>
+                          ) : (
+                            <Button
+                              variant="primary"
+                              disabled={isPending || !isOwner}
+                              onClick={() => enrollOne(identity.commitment)}
+                              title={isOwner ? "Enrol this student" : "Only the course owner can enrol"}
+                            >
+                              Enrol
+                            </Button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </li>
             );
           })}
@@ -111,10 +211,10 @@ export function IdentitiesPanel({
 
       <div className="mt-3 border-t border-neutral-800 pt-3 text-xs">
         {isOwner ? (
-          <p className="text-emerald-400">Connected as the course owner — you can enroll identities.</p>
+          <p className="text-emerald-400">Connected as the course owner — you can enrol students.</p>
         ) : (
           <p className="text-amber-400">
-            Only the course owner can enroll identities.
+            Only the course owner can enrol identities.
             {owner && (
               <>
                 {" "}
@@ -127,12 +227,12 @@ export function IdentitiesPanel({
                 · You: <span className="font-mono">{shorten(connected, 4)}</span>
               </>
             )}
-            . Switch MetaMask to the owner account to enroll.
+            . Switch MetaMask to the owner account to enrol.
           </p>
         )}
       </div>
       {busy && <p className="mt-2 text-xs text-neutral-400">{busy}</p>}
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
-    </section>
+    </Section>
   );
 }

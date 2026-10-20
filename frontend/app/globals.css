@@ -2,8 +2,60 @@
 
 :root {
   color-scheme: dark;
+
+  /* Motion tokens. Custom curves beat the built-in easings: they feel intentional
+     instead of merely correct. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 body {
   @apply bg-neutral-950 text-neutral-100 antialiased;
+}
+
+:focus-visible {
+  outline-color: theme(--color-emerald-400);
+}
+
+/* Thin, unobtrusive scrollbars for the persona tab strip. */
+.scrollbar-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-neutral-800) transparent;
+}
+
+.scrollbar-slim::-webkit-scrollbar {
+  height: 6px;
+}
+
+.scrollbar-slim::-webkit-scrollbar-thumb {
+  background-color: var(--color-neutral-800);
+  border-radius: 9999px;
+}
+
+/* Panels swap when the active persona changes. Enter only: an exit animation would
+   delay the next view, and the user is waiting on it. */
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-panel-in {
+  animation: panel-in 200ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

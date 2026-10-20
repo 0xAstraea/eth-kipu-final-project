@@ -80,19 +80,24 @@ El address solamente puede aparecer si el propio usuario lo revela voluntariamen
 
 ## Instalación y compilación
 
+El repo es un workspace de pnpm. Desde la raíz:
+
 ```bash
-npm install
-npx hardhat compile
+pnpm install
+pnpm run compile            # compila los contratos
 ```
 
 ## Tests y coverage
 
 ```bash
-# suite completa (30 tests)
-npx hardhat test
+# suite completa del contrato (32 tests)
+pnpm --filter @teamup/contracts test
+
+# la suite completa del repo: contrato + frontend (48 tests)
+pnpm test
 
 # coverage con la herramienta built-in de Hardhat 3
-npx hardhat test --coverage
+pnpm run coverage
 ```
 
 Resultado del coverage sobre el código propio: **87.90% de líneas y 89.05% de statements** (ambas por encima del 40% exigido). El reporte HTML queda en `coverage/html`.
@@ -110,7 +115,7 @@ El triage completo de los findings (corregidos y aceptados con justificación) e
 
 ```bash
 # flujo completo narrado por consola (para el video)
-npx hardhat run scripts/demo.ts
+pnpm run demo
 ```
 
 ## Estructura
@@ -135,8 +140,8 @@ scripts/
   demo.ts                   Flujo completo narrado (para el video)
   00-smoke.ts               Smoke test del pipeline Semaphore (deploy + proof)
   lib/protocol.ts           Helpers de deploy y generación de proofs
-  export-abis.mjs           Exporta los ABIs a ../frontend/lib/abis (npm run export:abis)
-  sync-frontend-env.mjs     Escribe ../frontend/.env.local desde deployments/ (npm run sync:frontend-env)
+  export-abis.mjs           Exporta los ABIs a ../frontend/lib/abis (pnpm run export:abis)
+  sync-frontend-env.mjs     Escribe ../frontend/.env.local desde deployments/ (pnpm run sync:frontend-env)
   gas-profile.ts            Perfilador de gas (despliega y mide el flujo completo)
   gas-compare.mjs           Compara dos entradas de gas-snapshot.json
   gas-size.ts               Tamaño del bytecode desplegado de nuestros contratos
@@ -145,7 +150,7 @@ security/
   slither-report.md         Triage de findings de Slither
 ```
 
-Las dependencias `Semaphore.sol`, `SemaphoreVerifier.sol` y `PoseidonT3` se instalan por npm (`@semaphore-protocol/contracts`, `poseidon-solidity`) y se despliegan con `getContractFactory`.
+Las dependencias `Semaphore.sol`, `SemaphoreVerifier.sol` y `PoseidonT3` se instalan con pnpm (`@semaphore-protocol/contracts`, `poseidon-solidity`) y se despliegan con `getContractFactory`.
 
 ## Deploy en testnet y verificación
 
@@ -153,9 +158,9 @@ Instrucciones completas en [`deploy/README.md`](deploy/README.md). Resumen:
 
 ```bash
 cp .env.example .env       # completar SEPOLIA_RPC_URL, DEPLOYER_PRIVATE_KEY, ETHERSCAN_API_KEY
-npx hardhat run deploy/deploy.ts --network sepolia
-npx hardhat verify --network sepolia <TEAM_CREDENTIAL> <TEAM_REGISTRY_ADDRESS>
-npx hardhat verify --network sepolia <TEAM_REGISTRY> <SEMAPHORE_ADDRESS>
+pnpm run deploy:sepolia
+pnpm --filter @teamup/contracts exec hardhat verify --network sepolia <TEAM_CREDENTIAL> <TEAM_REGISTRY_ADDRESS>
+pnpm --filter @teamup/contracts exec hardhat verify --network sepolia <TEAM_REGISTRY> <SEMAPHORE_ADDRESS>
 ```
 
 `TeamCredential` se despliega con la dirección del `TeamRegistry` como argumento del constructor, así que el registry se despliega primero. El stack de Semaphore (verificador, PoseidonT3 y Semaphore) se reutiliza entre despliegues: las direcciones quedan en [`deploy/semaphore-stack.json`](deploy/semaphore-stack.json) y se pueden pisar con `SEMAPHORE_ADDRESS`, `SEMAPHORE_VERIFIER_ADDRESS` y `POSEIDON_T3_ADDRESS`.
@@ -201,7 +206,8 @@ El análisis completo, con las mediciones antes y después de cada cambio, está
 - `addCourseMembers` inscribe a varios alumnos en una sola transacción.
 
 ```bash
-npx hardhat run scripts/gas-profile.ts     # perfilador, escribe gas-snapshot.json
+pnpm run gas                              # perfilador, escribe gas-snapshot.json
+node scripts/gas-compare.mjs baseline applied   # diff contra la medición base
 node scripts/gas-compare.mjs baseline applied
 ```
 

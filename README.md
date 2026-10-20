@@ -10,6 +10,7 @@ Un defecto de la planilla compartida: no verifica nada, no impide postularse dos
 .
 ├── contracts/     Protocolo Solidity + tests, coverage, Slither y scripts de deploy
 ├── frontend/      App Next.js 16 + wagmi 3 con pruebas ZK generadas en el navegador
+├── package.json   Workspace pnpm: un solo install y un solo `pnpm test`
 ├── WHITEPAPER.md  Problema, modelo de amenazas, diseño y roadmap
 └── README.md
 ```
@@ -17,24 +18,24 @@ Un defecto de la planilla compartida: no verifica nada, no impide postularse dos
 - **`contracts/`** — `TeamRegistry` (lógica), `TeamCredential` (ERC721) y todo el tooling Hardhat. Guía completa en [`contracts/README.md`](contracts/README.md).
 - **`frontend/`** — interfaz para operar el protocolo contra localhost o Sepolia. Guía completa en [`frontend/README.md`](frontend/README.md).
 
+El repo es un **workspace de pnpm**: `contracts/` y `frontend/` se instalan juntos y se prueban
+con un solo comando desde la raíz.
+
 ## Inicio rápido
 
-### 1. Contratos
-
 ```bash
-cd contracts
-npm install
-npx hardhat test          # 30 tests
-npx hardhat test --coverage
+pnpm install          # instala contracts/ y frontend/
+pnpm test             # 48 tests: 32 del contrato + 16 del frontend
+pnpm run check        # typecheck + lint + tests de los dos paquetes
+pnpm run build        # compila los contratos y el frontend
 ```
 
-### 2. Frontend
+### Frontend
 
 ```bash
 cd frontend
-npm install
 cp .env.example .env.local   # completar direcciones y RPC
-npm run dev                  # http://localhost:3000
+pnpm run dev                 # http://localhost:3000
 ```
 
 ## Demo local completa (para el video)
@@ -43,21 +44,17 @@ Levanta una red local, despliega el protocolo, genera actividad on-chain y abre 
 
 ```bash
 # terminal 1 — red local
-cd contracts
-npm install
-npm run node
+pnpm run node
 
 # terminal 2 — deploy + interacción (imprime el hash de cada tx)
-cd contracts
-npm run deploy:localhost
-npm run interact:localhost          # crea un equipo, postula, acepta, reclama y revela
-npm run export:abis                 # refresca los ABIs que usa el frontend
-npm run sync:frontend-env           # escribe frontend/.env.local con las direcciones
+pnpm run deploy:localhost
+pnpm run interact:localhost          # crea un equipo, postula, acepta, reclama y revela
+pnpm run export:abis                 # refresca los ABIs que usa el frontend
+pnpm run sync:frontend-env           # escribe frontend/.env.local con las direcciones
 
 # terminal 3 — frontend apuntando a localhost
 cd frontend
-npm install
-npm run dev
+pnpm run dev
 ```
 
 En el navegador, conectá MetaMask a `localhost:31337` (Chain ID 31337). Para la demo con dos roles, usá **dos navegadores/perfiles** con dos cuentas (una como docente/owner, otra como alumno).

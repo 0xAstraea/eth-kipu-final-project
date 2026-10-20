@@ -26,16 +26,27 @@ Copiá `.env.example` a `.env.local` y completá las direcciones que imprime el 
 | `NEXT_PUBLIC_SEMAPHORE_ADDRESS` | Dirección de `Semaphore` | — |
 | `NEXT_PUBLIC_FROM_BLOCK` | Primer bloque a escanear para eventos | `0` |
 
-Para localhost, generá las direcciones automáticamente desde `contracts/` con `npm run sync:frontend-env` (lee `contracts/deployments/localhost.json` y escribe este `.env.local`). También podés copiarlas a mano desde ese archivo.
+Para localhost, generá las direcciones automáticamente desde la raíz con `pnpm run sync:frontend-env` (lee `contracts/deployments/localhost.json` y escribe este `.env.local`). También podés copiarlas a mano desde ese archivo.
 
 ## Correr
 
 ```bash
-npm install
-npm run dev        # http://localhost:3000
+pnpm install       # desde la raíz del repo (workspace)
+pnpm run dev       # http://localhost:3000
 # producción
-npm run build && npm start
+pnpm run build && pnpm --filter @teamup/frontend start
 ```
+
+## Tests
+
+```bash
+pnpm test                                  # desde la raiz: contrato + frontend (48 tests)
+pnpm --filter @teamup/frontend test        # solo el frontend (16 tests)
+```
+
+La suite del frontend fija los valores que el contrato y el navegador tienen que compartir
+(el `claimCommitment` y el mensaje del proof), con los mismos valores que
+`contracts/test/protocol-values.test.ts` fija del lado del contrato.
 
 ## Cómo está construido
 
@@ -58,10 +69,11 @@ Para una demo con dos roles, usá dos navegadores/perfiles: uno con la cuenta ow
 ## Notas
 
 - Al generar un proof, `@semaphore-protocol/proof` descarga los artifacts del trusted setup desde un CDN: **el navegador necesita conexión a internet**.
-- Los ABIs se generan desde los artifacts de Hardhat con `npm run export:abis` (dentro de `contracts/`) y se commitean en `lib/abis`.
+- Los ABIs se generan desde los artifacts de Hardhat con `pnpm run export:abis` y se commitean en `lib/abis`.
 
 ## Evidencia
 
-- `npm run lint` — sin errores.
-- `npm run build` — compila y typechequea sin errores.
+- `pnpm test` — 48 tests, sin errores.
+- `pnpm run lint` — sin errores.
+- `pnpm run build` — compila y typechequea sin errores.
 - SSR: con la red local y el protocolo desplegado, `curl http://localhost:3000` devuelve el HTML con los equipos leídos on-chain.

@@ -1,13 +1,18 @@
 {
-  "name": "teamup-zk",
+  "name": "@teamup/contracts",
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.22.0",
   "description": "TeamUp ZK - anonymous team formation protocol using Semaphore zero-knowledge membership proofs",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
     "coverage": "hardhat test --coverage",
+    "typecheck": "tsc --noEmit",
     "demo": "hardhat run scripts/demo.ts",
     "smoke": "hardhat run scripts/00-smoke.ts",
     "node": "hardhat node",
@@ -17,7 +22,7 @@
     "interact:sepolia": "hardhat run deploy/interact.ts --network sepolia",
     "export:abis": "node scripts/export-abis.mjs",
     "sync:frontend-env": "node scripts/sync-frontend-env.mjs",
-    "typecheck": "tsc --noEmit"
+    "gas": "bash scripts/gas-run.sh applied"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^4.0.0",

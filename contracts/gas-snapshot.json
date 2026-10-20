@@ -119,7 +119,7 @@
     }
   },
   "applied": {
-    "measuredAt": "2026-10-19T21:43:42.354Z",
+    "measuredAt": "2026-10-20T02:58:34.809Z",
     "rows": [
       {
         "label": "deploy SemaphoreVerifier",
@@ -131,7 +131,7 @@
       },
       {
         "label": "deploy Semaphore",
-        "gas": 1782194
+        "gas": 1793221
       },
       {
         "label": "deploy TeamRegistry",
@@ -147,7 +147,7 @@
       },
       {
         "label": "TeamRegistry.addCourseMembers (3 students)",
-        "gas": 310329
+        "gas": 288399
       },
       {
         "label": "TeamRegistry.createTeam",
@@ -195,11 +195,11 @@
       },
       {
         "label": "Semaphore.addMember x3 (individual total)",
-        "gas": 417249
+        "gas": 396161
       },
       {
         "label": "Semaphore.addMembers (3 in one tx)",
-        "gas": 299677
+        "gas": 277747
       },
       {
         "label": "TeamCredential.tokenURI (view)",
@@ -219,7 +219,7 @@
       }
     ],
     "flowTotal": 1034054,
-    "deployTotal": 11922303,
+    "deployTotal": 11933330,
     "sizes": {
       "TeamRegistry": 6857,
       "TeamCredential": 4936

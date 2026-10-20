@@ -11,7 +11,7 @@ Reproduce a number:
 
 ```bash
 cd contracts
-bash scripts/gas-run.sh applied
+pnpm run gas
 node scripts/gas-compare.mjs baseline applied
 ```
 ## 1. Baseline
@@ -230,7 +230,7 @@ Applying A, B, C, D, E, F, G and H together. This is the code in the repository.
 | Item | Baseline | After | Delta |
 |---|---|---|---|
 | Deploy, our two contracts | 2,848,518 | 2,832,401 | -16,117 |
-| Deploy, full stack | 11,972,738 | 11,922,303 | -50,435 |
+| Deploy, full stack | 11,972,738 | 11,933,330 | -39,408 |
 | Deploy, stack reused | 11,972,738 | 2,832,401 | -9,140,337 (-76%) |
 | Flow, one team | 1,096,829 | 1,034,042 | -62,787 (-5.7%) |
 | createTeam | 500,973 | 472,567 | -28,406 |
@@ -242,6 +242,10 @@ Applying A, B, C, D, E, F, G and H together. This is the code in the repository.
 The TeamRegistry bytecode grew from 6,234 to 6,857 bytes. The packing masks and the batch
 enrollment function cost 103,800 gas of extra code deposit, which the flow savings repay
 after two teams. The TeamCredential bytecode shrank from 5,412 to 4,936 bytes.
+
+The full stack line moves by a few hundred gas between runs, because the cost of deploying
+the third-party contracts depends on the bytes of their addresses, which the calldata
+prices. The two contracts of this repo are stable.
 
 ## 6. Files
 

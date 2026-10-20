@@ -1,0 +1,32 @@
+{
+  "name": "teamup-zk",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "description": "TeamUp ZK - anonymous team formation protocol using Semaphore zero-knowledge membership proofs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "pnpm run test:contracts && pnpm run test:frontend",
+    "test:contracts": "pnpm --filter @teamup/contracts test",
+    "test:frontend": "pnpm --filter @teamup/frontend test",
+    "coverage": "pnpm --filter @teamup/contracts coverage",
+    "typecheck": "pnpm --filter @teamup/contracts typecheck && pnpm --filter @teamup/frontend typecheck",
+    "lint": "pnpm --filter @teamup/frontend lint",
+    "compile": "pnpm --filter @teamup/contracts compile",
+    "build": "pnpm run compile && pnpm --filter @teamup/frontend build",
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run test",
+    "node": "pnpm --filter @teamup/contracts node",
+    "demo": "pnpm --filter @teamup/contracts demo",
+    "smoke": "pnpm --filter @teamup/contracts smoke",
+    "deploy:localhost": "pnpm --filter @teamup/contracts deploy:localhost",
+    "interact:localhost": "pnpm --filter @teamup/contracts interact:localhost",
+    "deploy:sepolia": "pnpm --filter @teamup/contracts deploy:sepolia",
+    "interact:sepolia": "pnpm --filter @teamup/contracts interact:sepolia",
+    "export:abis": "pnpm --filter @teamup/contracts export:abis",
+    "sync:frontend-env": "pnpm --filter @teamup/contracts sync:frontend-env",
+    "gas": "pnpm --filter @teamup/contracts gas"
+  }
+}

@@ -172,11 +172,11 @@ Semaphore` y `TeamRegistry ↔ TeamCredential`.
 
 ## 9. Testing y análisis estático
 
-- **30 tests** de Mocha que cubren el flujo principal y todos los reverts relevantes:
+- **32 tests** de Mocha que cubren el flujo principal y todos los reverts relevantes:
   no-miembro, doble postulación, mensaje alterado, claim con salt incorrecto, claim antes de
   aceptar, claim antes de revelar, reveal prematuro, equipo lleno, root del plantel
   determinista, y que la postulación nunca queda ligada al emisor.
-- **Coverage (`npx hardhat test --coverage`)**: 87.9% de líneas y 89.1% de statements sobre el código
+- **Coverage (`pnpm run coverage`)**: 87.9% de líneas y 89.1% de statements sobre el código
   propio (`solidity-coverage` no desglosa ramas ni funciones).
 - **Slither** sobre `TeamRegistry` y `TeamCredential` con las dependencias externas excluidas.
 

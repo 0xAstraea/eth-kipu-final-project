@@ -24,7 +24,7 @@ Copy `.env.example` to `.env` and fill in:
 ## 2. Deploy
 
 ```bash
-npx hardhat run deploy/deploy.ts --network sepolia
+pnpm run deploy:sepolia
 ```
 
 This deploys `TeamRegistry`, then `TeamCredential` with the registry address as its
@@ -54,15 +54,15 @@ deployed stack is written back to `semaphore-stack.json`, so the next deployment
 Use the addresses printed by the deploy step and the constructor arguments:
 
 ```bash
-npx hardhat verify --network sepolia <TeamCredential> <TeamRegistry>
-npx hardhat verify --network sepolia <TeamRegistry> <Semaphore>
+pnpm --filter @teamup/contracts exec hardhat verify --network sepolia <TeamCredential> <TeamRegistry>
+pnpm --filter @teamup/contracts exec hardhat verify --network sepolia <TeamRegistry> <Semaphore>
 
 # Third-party contracts (optional). Semaphore needs the linked library address:
-npx hardhat verify --network sepolia <SemaphoreVerifier>
-npx hardhat verify --network sepolia --libraries \
+pnpm --filter @teamup/contracts exec hardhat verify --network sepolia <SemaphoreVerifier>
+pnpm --filter @teamup/contracts exec hardhat verify --network sepolia --libraries \
   "npm/poseidon-solidity@0.0.5/PoseidonT3.sol:PoseidonT3:<PoseidonT3>" \
   <Semaphore> <SemaphoreVerifier>
-npx hardhat verify --network sepolia <PoseidonT3>
+pnpm --filter @teamup/contracts exec hardhat verify --network sepolia <PoseidonT3>
 ```
 
 The compiler runs with the CBOR metadata disabled, to keep the deployed code small. The
@@ -73,7 +73,7 @@ Paste the resulting explorer URLs into the main `README.md`.
 ## 4. Run a real interaction
 
 ```bash
-npx hardhat run deploy/interact.ts --network sepolia
+pnpm run interact:sepolia
 ```
 
 Runs the full flow on-chain with **freshly generated** identities (nothing hardcoded):
@@ -83,18 +83,18 @@ credential to a throwaway address. It prints the transaction hash of every step 
 into the `README.md` "On-chain evidence" section.
 
 > The scripts generate random identities at runtime, so no usable secret is ever stored in
-> the repository. For local development use `npx hardhat run scripts/demo.ts` instead.
+> the repository. For local development use `pnpm run demo` instead.
 
 ## 5. Local demo (localhost + frontend)
 
 ```bash
 # terminal 1
-npm run node
+pnpm run node
 
 # terminal 2 — fresh deployment owned by the deployer (Hardhat account #0)
-npm run deploy:localhost
-npm run interact:localhost
-npm run sync:frontend-env      # writes ../frontend/.env.local
+pnpm run deploy:localhost
+pnpm run interact:localhost
+pnpm run sync:frontend-env      # writes ../frontend/.env.local
 ```
 
 `sync:frontend-env` reads `deployments/localhost.json` and writes `frontend/.env.local`,
@@ -111,8 +111,8 @@ OWNER_ADDRESS=0xYourMetaMaskAccount
 ```
 
 ```bash
-npm run deploy:localhost       # funds OWNER_ADDRESS with 10 ETH and transfers ownership
-npm run sync:frontend-env
+pnpm run deploy:localhost       # funds OWNER_ADDRESS with 10 ETH and transfers ownership
+pnpm run sync:frontend-env
 ```
 
 Setting `OWNER_ADDRESS` requires `contracts/.env`, which the config now loads automatically

@@ -468,13 +468,18 @@ export function TeamCard({
                   </Select>
                 </label>
                 <label className="block text-xs text-neutral-400">
-                  Claim address (NFT recipient, optional)
+                  Credential address (optional)
                   <TextInput
                     value={claimAddress}
                     onChange={(event) => setClaimAddress(event.target.value)}
                     placeholder={address ?? "0x…"}
                     className="mt-1 font-mono"
                   />
+                  <span className="mt-1 block text-[11px] leading-relaxed text-neutral-500">
+                    Where the credential NFT will be minted. Leave it empty to use your connected
+                    wallet, or set a separate address to keep the credential unlinked from your
+                    main account.
+                  </span>
                 </label>
               </div>
               <label className="block text-xs text-neutral-400">
@@ -486,6 +491,13 @@ export function TeamCard({
                   className="mt-1"
                 />
               </label>
+              {!!address && (!claimAddress || claimAddress.toLowerCase() === address.toLowerCase()) && (
+                <p className="text-[11px] leading-relaxed text-amber-400/90">
+                  The credential will be publicly tied to{" "}
+                  <span className="font-mono">{shorten(address, 4)}</span> once claimed. That is
+                  fine for a demo, but on a real chain it marks that account as a course member.
+                </p>
+              )}
               <Button type="submit" variant="primary" size="md" disabled={!!busy}>
                 {busy || "Generate proof & apply"}
               </Button>

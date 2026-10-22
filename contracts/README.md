@@ -7,14 +7,17 @@ Formación de equipos con membresía verificable: un protocolo on-chain donde lo
 
 ## El problema
 
-En el curso actual, buscar equipo se resuelve con una planilla compartida. Ese mecanismo no verifica nada: cualquiera puede publicar cualquier dato, no hay forma de comprobar que alguien es compañero del curso, no se puede evitar que una persona se postule varias veces con identidades distintas, y no queda ningún registro verificable de los acuerdos.
+En el curso actual, buscar equipo se resuelve con una planilla compartida. Ese mecanismo no verifica nada: cualquiera puede publicar cualquier dato, no hay forma de comprobar que alguien es compañero del curso, no se puede evitar que una persona se postule varias veces con identidades distintas, y no queda ningún registro verificable de los acuerdos. Un backend central podría ofrecer anonimato aparente, pero habría que confiar en que no correlaciona postulaciones ni reescribe el historial.
 
-TeamUp ZK reemplaza la planilla por un protocolo donde:
+TeamUp ZK reemplaza la planilla por un protocolo on-chain donde:
 
-- solo estudiantes verificados por el docente pueden crear equipos y postularse;
+- solo estudiantes verificados por el docente pueden crear equipos y postularse (prueba ZK de membresía);
 - la postulación se identifica por un **nullifier** (seudónimo criptográfico), nunca por una dirección;
+- la misma identidad no puede postularse dos veces al mismo equipo (nullifier quemado en cadena);
 - la aceptación la decide el equipo, y la credencial resultante (NFT) se puede reclamar en una dirección desechable;
-- todo queda registrado en eventos para la trazabilidad.
+- tras la revelación, `rosterRoot` y los eventos dejan un registro público verificable.
+
+Por qué tiene sentido blockchain (y qué queda fuera del alcance on-chain) está en [`../WHITEPAPER.md`](../WHITEPAPER.md) §2.
 
 ## Arquitectura
 

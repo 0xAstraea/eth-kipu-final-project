@@ -2,7 +2,7 @@
 
 Formación de equipos con membresía verificable. Los estudiantes demuestran con una **prueba de conocimiento cero (Semaphore V4)** que pertenecen al curso y se postulan a equipos **sin revelar su identidad**: la postulación se registra por un **nullifier** (seudónimo criptográfico), no por una dirección. Al ser aceptados reciben una **credencial NFT**.
 
-Un defecto de la planilla compartida: no verifica nada, no impide postularse dos veces con identidades distintas y no deja un registro verificable. TeamUp ZK reemplaza la planilla por un protocolo on-chain.
+Un defecto de la planilla compartida: no verifica nada, no impide postularse dos veces con identidades distintas y no deja un registro verificable. Un servidor central podría simular anonimato, pero obligaría a **confiar** en que no correlaciona postulaciones ni altera el registro. TeamUp ZK pone las reglas en contrato (membresía ZK, nullifiers anti-Sybil, `rosterRoot` y credencial NFT) para que cualquiera pueda **verificarlas**. Justificación completa en [`WHITEPAPER.md`](WHITEPAPER.md) §2.
 
 ## Estructura del repositorio
 

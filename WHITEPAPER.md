@@ -27,22 +27,38 @@ mecanismo falla en tres frentes:
 
 ## 2. Por qué blockchain
 
-La decisión de usar blockchain no es decorativa; responde a dos propiedades concretas del
-problema:
+La decisión de usar blockchain no es decorativa: el problema pide propiedades que un
+servidor central solo puede *prometer*, no *demostrar*. TeamUp ZK usa la cadena como
+árbitro de reglas y fuente de verdad auditable, no como base de datos genérica.
 
-- **Membresía verificable sin intermediario.** El docente es quien decide quién está en el
-  curso, y esa lista vive en un contrato. Cualquier contrato o usuario puede verificar en
-  cadena que una postulación proviene de un miembro del curso, sin depender de una base de
-  datos privada ni de una firma offline.
-- **Privacidad verificable.** Es exactamente el caso de uso de las pruebas de conocimiento
-  cero: queremos *demostrar* una condición (soy del curso) sin *revelar* el dato que la
-  sostiene (quién soy). Un servidor central podría ofrecer anonimato, pero obligaría a confiar
-  en que no registra ni correlaciona las postulaciones. El contrato, en cambio, no tiene dónde
-  guardar esa correlación porque nunca recibe la identidad.
+Sin blockchain (planilla o API + base de datos privada) habría que confiar en quien opera el
+sistema: que solo deja postular a alumnos del curso, que no permite doble postulación, que
+no correlaciona quién buscó equipo, y que el registro final no se edita después. Con el
+protocolo on-chain esas reglas se ejecutan en contrato y cualquiera puede verificarlas a
+partir del estado y los eventos.
 
-El registro público y verificable de la composición de los equipos es un efecto secundario
-deseable: al final, todos pueden comprobar que un equipo se formó y quiénes (criptográficamente)
-lo integraron, sin que el proceso de formación haya expuesto a nadie.
+Propiedades concretas que justifican WEB3:
+
+1. **Membresía verificable en cadena.** El docente decide quién entra al curso (owner del
+   grupo), pero la lista de commitments vive en Semaphore. Cualquier usuario o contrato
+   comprueba, vía prueba ZK, que una postulación proviene de un miembro, sin base de datos
+   privada ni firma offline.
+2. **Privacidad sin intermediario de confianza.** Queremos *demostrar* “soy del curso” sin
+   *revelar* quién soy. Un servidor podría ofrecer anonimato, pero podría registrar IP,
+   wallet, hora y correlacionar postulaciones. El contrato nunca recibe la identidad: solo
+   el nullifier y la prueba; no hay lugar donde guardar esa correlación.
+3. **Unicidad anti-Sybil enforceable.** La misma identidad no puede postularse dos veces al
+   mismo equipo: el nullifier se quema en cadena. En una planilla, bastaría otro nombre o
+   otra cuenta.
+4. **Registro y credencial no falsificables.** Tras `reveal`, `rosterRoot` compromete el
+   plantel y el NFT certifica pertenencia a un equipo ya cerrado. No es un PDF editable ni
+   una celda de Excel: es estado público, eventos y un token reclamable en una dirección
+   (incluso desechable).
+
+**Qué no es blockchain aquí.** El docente sigue siendo autoridad sobre el roster; chat,
+matching por skills y la vida social del curso quedan fuera del MVP. La cadena no
+“descentraliza el aula”: garantiza que, una vez enrolados, las reglas de postulación,
+anti-Sybil, revelación y credencial no dependan de la buena fe de un operador.
 
 ## 3. Objetivos y modelo de amenazas
 

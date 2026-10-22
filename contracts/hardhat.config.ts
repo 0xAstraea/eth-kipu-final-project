@@ -22,10 +22,8 @@ const config: HardhatUserConfig = {
       optimizer: {
         enabled: true,
         runs: 200
-      },
-      // Drops the 53-byte CBOR metadata trailer, which costs 200 gas per byte of code
-      // deposit on every deploy. Nothing at runtime changes.
-      metadata: { bytecodeHash: "none", appendCBOR: false }
+      }
+      // Keep default CBOR metadata so explorers detect solc 0.8.28 (needed for verify).
     }
   },
   networks: {

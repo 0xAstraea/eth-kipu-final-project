@@ -48,7 +48,7 @@ pnpm run verify:sepolia
 ```
 
 Reads constructor args from `deployments/<network>.json` and verifies all five contracts.
-Compiler has CBOR metadata off; verification uses the same settings.
+Compiler keeps CBOR metadata on so explorers can detect solc 0.8.28 and verify.
 
 Paste explorer URLs into [`../README.md`](../README.md).
 

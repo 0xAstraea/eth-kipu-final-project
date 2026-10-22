@@ -49,7 +49,7 @@ Proof verification is a floor (bn254 + nullifier burn).
 | E | Credential `registry` immutable | −115,803 deploy credential |
 | F | Drop redundant zero writes | −2,224 createTeam / requestJoin |
 | G | `addCourseMembers` batch | −38% for four students |
-| H | Compiler metadata off | −11,435 / contract deploy |
+| H | Compiler metadata off | −11,435 / contract deploy (**reverted** — blocked explorer verify / HHE80005) |
 | I | Keep `runs = 200` | verified best; `viaIR` fails (Poseidon size) |
 
 **A caveat:** share one Semaphore only if course rosters do not overlap

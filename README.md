@@ -21,18 +21,29 @@ Install and test both packages from the root (pnpm workspace).
 
 ## Quick start
 
+Needs Node 20+, [pnpm](https://pnpm.io), and [GNU Make](https://www.gnu.org/software/make/).
+On Windows, use Git Bash or WSL, or install Make (`choco install make`).
+
 ```bash
-pnpm install
-pnpm test             # 62 tests (46 contracts + 16 frontend)
-pnpm run check        # typecheck + lint + tests
-pnpm run build
+make setup            # pnpm install + create .env files from examples
+make test             # 62 tests (contracts + frontend)
+make check            # typecheck + lint + tests
+make build
+make help             # all targets
 ```
 
 ```bash
-cd frontend
-cp .env.example .env.local
-pnpm run dev          # http://localhost:3000
+make frontend         # http://localhost:3000
 ```
+
+### Testnet (Sepolia)
+
+```bash
+make setup            # then edit contracts/.env
+make testnet          # deploy + verify + interact
+```
+
+Or step by step: `make deploy`, `make verify`, `make interact`.
 
 ## Local demo (for the video)
 

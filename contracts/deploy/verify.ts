@@ -4,13 +4,15 @@ import { join } from "node:path";
 
 const connection = await hre.network.create();
 
-/// Verifies every contract of the deployment on the block explorer.
+/// Verifies contracts from deployments/<network>.json on the block explorer.
+///
+/// By default only **own** contracts (TeamRegistry, TeamCredential) — what the
+/// course checklist requires. Dependency stack (Semaphore / Poseidon) is skipped
+/// unless VERIFY_DEPS=1 (those addresses must have been deployed with CBOR metadata).
 ///
 /// Usage:
 ///   pnpm run verify:sepolia
-///
-/// Reads deployments/<network>.json and submits the verification of each contract with
-/// the constructor arguments it was deployed with.
+///   VERIFY_DEPS=1 pnpm run verify:sepolia
 async function main() {
   const networkName = connection.networkName;
   const statePath = join(process.cwd(), "deployments", `${networkName}.json`);
@@ -20,6 +22,7 @@ async function main() {
   }
 
   const state = JSON.parse(readFileSync(statePath, "utf8"));
+  const verifyDeps = (process.env.VERIFY_DEPS ?? "").trim() === "1";
 
   const librariesPath = join(process.cwd(), "deployments", "libraries.mjs");
   mkdirSync(join(librariesPath, ".."), { recursive: true });
@@ -32,7 +35,7 @@ async function main() {
     )};\n`
   );
 
-  const targets = [
+  const own = [
     {
       label: "TeamRegistry",
       address: state.teamRegistry,
@@ -44,7 +47,10 @@ async function main() {
       address: state.teamCredential,
       contract: "contracts/TeamCredential.sol:TeamCredential",
       args: [state.teamRegistry]
-    },
+    }
+  ];
+
+  const deps = [
     {
       label: "Semaphore",
       address: state.semaphore,
@@ -66,7 +72,12 @@ async function main() {
     }
   ];
 
-  console.log(`Verifying ${targets.length} contracts on '${networkName}'`);
+  const targets = verifyDeps ? [...own, ...deps] : own;
+  console.log(
+    verifyDeps
+      ? `Verifying own contracts + Semaphore stack on '${networkName}'`
+      : `Verifying own contracts on '${networkName}' (set VERIFY_DEPS=1 to include Semaphore stack)`
+  );
 
   const verifyTask = hre.tasks.getTask("verify");
 

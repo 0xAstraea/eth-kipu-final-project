@@ -24,6 +24,7 @@
     "sync:frontend-env": "node scripts/sync-frontend-env.mjs",
     "gas": "bash scripts/gas-run.sh applied",
     "verify:sepolia": "hardhat run deploy/verify.ts --network sepolia",
+    "verify:deps": "hardhat run deploy/verify-deps-etherscan.ts --network sepolia",
     "verify:localhost": "hardhat run deploy/verify.ts --network localhost"
   },
   "devDependencies": {

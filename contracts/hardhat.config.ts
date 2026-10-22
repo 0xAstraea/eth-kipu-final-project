@@ -9,26 +9,46 @@ if (existsSync(".env")) {
   process.loadEnvFile(".env");
 }
 
+const optimizer = { enabled: true, runs: 200 } as const;
+
+/** Settings used for the Sepolia Semaphore stack (deployed without CBOR). */
+const noCbor = {
+  optimizer,
+  metadata: { bytecodeHash: "none" as const, appendCBOR: false }
+};
+
 const config: HardhatUserConfig = {
   plugins: [hardhatToolboxMochaEthers],
   solidity: {
-    version: "0.8.28",
+    compilers: [
+      {
+        version: "0.8.28",
+        settings: { optimizer }
+        // Own contracts: default CBOR metadata (needed for Hardhat/Etherscan verify).
+      }
+    ],
     npmFilesToBuild: [
       "@semaphore-protocol/contracts/Semaphore.sol",
       "@semaphore-protocol/contracts/base/SemaphoreVerifier.sol",
       "poseidon-solidity/PoseidonT3.sol"
     ],
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200
+    // Match the on-chain Semaphore stack bytecode (no CBOR) for dependency verification.
+    overrides: {
+      "poseidon-solidity/PoseidonT3.sol": {
+        version: "0.8.28",
+        settings: noCbor
+      },
+      "@semaphore-protocol/contracts/Semaphore.sol": {
+        version: "0.8.28",
+        settings: noCbor
+      },
+      "@semaphore-protocol/contracts/base/SemaphoreVerifier.sol": {
+        version: "0.8.28",
+        settings: noCbor
       }
-      // Keep default CBOR metadata so explorers detect solc 0.8.28 (needed for verify).
     }
   },
   networks: {
-    // Testnet deployment target. Secrets are read from env vars / the Hardhat keystore,
-    // never from the config file. See deploy/README.md and .env.example.
     sepolia: {
       type: "http",
       chainType: "l1",

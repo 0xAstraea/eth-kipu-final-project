@@ -26,6 +26,7 @@
     "deploy:sepolia": "pnpm --filter @teamup/contracts deploy:sepolia",
     "interact:sepolia": "pnpm --filter @teamup/contracts interact:sepolia",
     "verify:sepolia": "pnpm --filter @teamup/contracts verify:sepolia",
+    "verify:deps": "pnpm --filter @teamup/contracts verify:deps",
     "export:abis": "pnpm --filter @teamup/contracts export:abis",
     "sync:frontend-env": "pnpm --filter @teamup/contracts sync:frontend-env",
     "gas": "pnpm --filter @teamup/contracts gas"

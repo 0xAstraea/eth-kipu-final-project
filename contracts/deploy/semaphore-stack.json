@@ -1,3 +1,7 @@
 {
-  "sepolia": {}
+  "sepolia": {
+    "semaphore": "0xBB10e761CDB2dEf868476c427BD168bF6699C691",
+    "semaphoreVerifier": "0x1eE051c06323d8E28bDebe98a32F1356C4d2cC5a",
+    "poseidonT3": "0x8F53de417555496B1b288ba20f1dCEF76a4a8c4B"
+  }
 }

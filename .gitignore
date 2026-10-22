@@ -24,6 +24,9 @@ next-env.d.ts
 npm-debug.log*
 yarn-error.log*
 
+# Slither raw dump (triage lives in security/slither-report.md)
+**/slither-raw-output.txt
+
 # Environment
 .env
 .env.*

@@ -1,10 +1,9 @@
 # TeamUp ZK — common tasks
 # Requires: Node 20+, pnpm, GNU Make
-# Testnet deploy also needs contracts/.env (see contracts/.env.example)
+# Testnet: fill contracts/.env (see contracts/.env.example)
 
 PNPM ?= pnpm
 
-# On Windows, prefer Git Bash so recipes get a POSIX shell.
 ifeq ($(OS),Windows_NT)
   GIT_BASH := $(wildcard C:/Program Files/Git/bin/bash.exe)
   ifneq ($(GIT_BASH),)
@@ -17,38 +16,37 @@ endif
 .PHONY: help install setup test test-contracts test-frontend coverage \
 	check build compile lint typecheck \
 	node demo deploy-local interact-local sync abis frontend \
-	deploy verify interact testnet slither gas
+	deploy verify verify-all interact testnet slither gas
 
 help:
 	$(info TeamUp ZK)
 	$(info )
 	$(info Setup)
-	$(info   make install          Install all workspace deps)
+	$(info   make install          Install workspace deps)
 	$(info   make setup            Install + create .env files from examples)
 	$(info )
 	$(info Quality)
-	$(info   make test             Run all tests (contracts + frontend))
+	$(info   make test             All tests (contracts + frontend))
 	$(info   make coverage         Contract coverage)
 	$(info   make check            Typecheck + lint + tests)
 	$(info   make build            Compile contracts + build frontend)
-	$(info   make slither          Static analysis (needs slither-analyzer))
+	$(info   make slither          Static analysis)
 	$(info )
 	$(info Local)
 	$(info   make node             Hardhat local chain)
 	$(info   make deploy-local     Deploy to localhost)
-	$(info   make interact-local   Run full flow on localhost)
+	$(info   make interact-local   Full flow on localhost)
 	$(info   make sync             Export ABIs + write frontend/.env.local)
-	$(info   make frontend         Start Next.js dev server)
-	$(info   make demo             Narrated local protocol demo)
+	$(info   make frontend         Next.js dev server)
+	$(info   make demo             Narrated local demo)
 	$(info )
-	$(info Testnet (Sepolia) — needs contracts/.env)
-	$(info   make deploy           Deploy to Sepolia)
-	$(info   make verify           Verify on explorer)
-	$(info   make interact         Run full flow on Sepolia)
+	$(info Testnet (Sepolia))
+	$(info   make deploy           Deploy)
+	$(info   make verify           Verify own contracts)
+	$(info   make verify-all       Verify own + Semaphore stack)
+	$(info   make interact         Full flow (prints tx hashes))
 	$(info   make testnet          deploy + verify + interact)
 	@exit 0
-
-# --- Setup ---
 
 install:
 	$(PNPM) install
@@ -66,8 +64,6 @@ setup: install
 	else \
 		echo "frontend/.env.local already exists"; \
 	fi
-
-# --- Quality ---
 
 test:
 	$(PNPM) test
@@ -102,8 +98,6 @@ slither:
 gas:
 	$(PNPM) run gas
 
-# --- Local ---
-
 node:
 	$(PNPM) run node
 
@@ -125,8 +119,6 @@ sync: abis
 frontend:
 	$(PNPM) --filter @teamup/frontend dev
 
-# --- Testnet (Sepolia) ---
-
 deploy:
 	@test -f contracts/.env || (echo "Missing contracts/.env — run: make setup" && exit 1)
 	$(PNPM) run deploy:sepolia
@@ -135,10 +127,11 @@ verify:
 	@test -f contracts/.env || (echo "Missing contracts/.env — run: make setup" && exit 1)
 	$(PNPM) run verify:sepolia
 
+verify-all: verify
+	cd contracts && $(PNPM) run verify:deps
+
 interact:
 	@test -f contracts/.env || (echo "Missing contracts/.env — run: make setup" && exit 1)
 	$(PNPM) run interact:sepolia
 
 testnet: deploy verify interact
-	@echo ""
-	@echo "Done. Paste addresses into contracts/README.md and tx hashes into On-chain evidence."

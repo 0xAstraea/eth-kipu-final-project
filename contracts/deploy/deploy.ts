@@ -145,10 +145,30 @@ function resolveStack(networkName: string): StackRecord {
   return merged;
 }
 
+/// Large Semaphore deps need an explicit gas limit: RPC eth_estimateGas often fails
+/// with "contract creation code storage out of gas" on PoseidonT3 / Semaphore.
+// PoseidonT3 is ~3.6M gas. Sepolia eth_estimateGas often fails with
+ // "creation code storage out of gas"; pin a limit just above the measured cost.
+const LARGE_DEPLOY = { gasLimit: 5_000_000 };
+
 /// Reuses the recorded Semaphore stack when its code is still on chain, and deploys
 /// the missing pieces otherwise. A reused stack costs no gas at all.
+/// Set FORCE_SEMAPHORE_DEPLOY=1 to ignore the recorded stack and deploy fresh
+/// (needed when the old bytecode cannot be verified, e.g. missing CBOR metadata).
+/// Env overrides (SEMAPHORE_*_ADDRESS) still apply under force, so a partially
+/// succeeded run can resume (e.g. reuse a verifier that already deployed).
 async function resolveSemaphoreStack(stack: StackRecord) {
-  if (stack.semaphore && (await hasCode(stack.semaphore))) {
+  const forceFresh = (process.env.FORCE_SEMAPHORE_DEPLOY ?? "").trim() === "1";
+  if (forceFresh) {
+    console.log("FORCE_SEMAPHORE_DEPLOY=1 — deploying a new Semaphore stack");
+    stack = {
+      semaphore: emptyToUndefined(process.env.SEMAPHORE_ADDRESS),
+      semaphoreVerifier: emptyToUndefined(process.env.SEMAPHORE_VERIFIER_ADDRESS),
+      poseidonT3: emptyToUndefined(process.env.POSEIDON_T3_ADDRESS)
+    };
+  }
+
+  if (!forceFresh && stack.semaphore && (await hasCode(stack.semaphore))) {
     console.log(`Semaphore          : ${stack.semaphore} (reused)`);
     console.log(`SemaphoreVerifier  : ${stack.semaphoreVerifier ?? "n/a (reused stack)"}`);
     console.log(`PoseidonT3         : ${stack.poseidonT3 ?? "n/a (reused stack)"}`);
@@ -157,7 +177,7 @@ async function resolveSemaphoreStack(stack: StackRecord) {
 
   let verifierAddress = stack.semaphoreVerifier;
   if (!verifierAddress || !(await hasCode(verifierAddress))) {
-    const verifier = await ethers.deployContract("SemaphoreVerifier");
+    const verifier = await ethers.deployContract("SemaphoreVerifier", [], LARGE_DEPLOY);
     await verifier.waitForDeployment();
     verifierAddress = await verifier.getAddress();
     console.log(`SemaphoreVerifier  : ${verifierAddress} (deployed)`);
@@ -167,7 +187,7 @@ async function resolveSemaphoreStack(stack: StackRecord) {
 
   let poseidonAddress = stack.poseidonT3;
   if (!poseidonAddress || !(await hasCode(poseidonAddress))) {
-    const poseidonT3 = await ethers.deployContract("PoseidonT3");
+    const poseidonT3 = await ethers.deployContract("PoseidonT3", [], LARGE_DEPLOY);
     await poseidonT3.waitForDeployment();
     poseidonAddress = await poseidonT3.getAddress();
     console.log(`PoseidonT3         : ${poseidonAddress} (deployed)`);
@@ -178,7 +198,7 @@ async function resolveSemaphoreStack(stack: StackRecord) {
   const semaphoreFactory = await ethers.getContractFactory("Semaphore", {
     libraries: { [POSEIDON_LINK_KEY]: poseidonAddress }
   });
-  const semaphore = await semaphoreFactory.deploy(verifierAddress);
+  const semaphore = await semaphoreFactory.deploy(verifierAddress, LARGE_DEPLOY);
   await semaphore.waitForDeployment();
   const semaphoreAddress = await semaphore.getAddress();
   console.log(`Semaphore          : ${semaphoreAddress} (deployed)`);
@@ -202,6 +222,11 @@ async function hasCode(address: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function emptyToUndefined(value: string | undefined): string | undefined {
+  const trimmed = (value ?? "").trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 /// Records the Semaphore stack so the next deployment reuses it. Local networks are

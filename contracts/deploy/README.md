@@ -22,60 +22,51 @@ Copy `.env.example` to `.env`. Do not commit `.env`.
 
 ```bash
 pnpm run deploy:sepolia
+# or from repo root:
+make deploy
 ```
 
-Order: `TeamRegistry` → `TeamCredential(registry)` → wire → optional enroll.
+Order: Semaphore stack (reuse or fresh) → `TeamRegistry` → `TeamCredential(registry)` → wire → optional enroll.
 Writes `deployments/sepolia.json`.
 
 ### Semaphore stack reuse
 
 Verifier and PoseidonT3 hold no state. Each registry creates its own group on Semaphore.
-Deploy the stack once; reuse it later.
+Deploy the stack once; reuse it later (`deploy/semaphore-stack.json`).
 
-Address resolution order:
-
-1. Env vars
-2. `semaphore-stack.json` for this network
-3. Previous `deployments/<network>.json`
-4. Fresh deploy of what is missing
-
-Reuse only if code still exists at that address. New deploys update `semaphore-stack.json`.
+Address resolution order: env vars → `semaphore-stack.json` → previous `deployments/<network>.json` → fresh deploy.
 
 ## 3. Verify
 
 ```bash
-pnpm run verify:sepolia
+make verify       # TeamRegistry + TeamCredential (Hardhat)
+make verify-all   # also Semaphore stack via Etherscan Standard JSON
 ```
 
-Reads constructor args from `deployments/<network>.json` and verifies all five contracts.
-Compiler keeps CBOR metadata on so explorers can detect solc 0.8.28 and verify.
-
-Paste explorer URLs into [`../README.md`](../README.md).
+Sepolia addresses and `#code` links: [`../deployed.md`](../deployed.md).
 
 ## 4. Interact
 
 ```bash
-pnpm run interact:sepolia
+make interact     # or: pnpm run interact:sepolia
 ```
 
-Runs the full flow with fresh identities. Prints each tx hash.
-Copy hashes into the "On-chain evidence" table.
+Runs the full flow with fresh identities. Prints each tx hash for the evidence table.
 
-For local narrated demo: `pnpm run demo`.
+Local narrated demo: `pnpm run demo`.
 
 ## 5. Local + frontend
 
 ```bash
 # terminal 1
-pnpm run node
+make node
 
 # terminal 2
-pnpm run deploy:localhost
-pnpm run interact:localhost
-pnpm run sync:frontend-env
-```
+make deploy-local && make interact-local && make sync
 
-`sync:frontend-env` writes `frontend/.env.local` from `deployments/localhost.json`.
+# terminal 3
+make frontend
+```
 
 ### Own MetaMask as course owner
 
@@ -85,11 +76,9 @@ OWNER_ADDRESS=0xYourMetaMaskAccount
 ```
 
 ```bash
-pnpm run deploy:localhost
-pnpm run sync:frontend-env
+make deploy-local && make sync
 ```
 
-`interact.ts` can only sign as a local Hardhat account.
+`interact.ts` only signs as a local Hardhat account.
 With an external owner, run owner steps from the frontend.
-
 Use two browsers for owner and student.

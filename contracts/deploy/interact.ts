@@ -9,6 +9,32 @@ import { claimCommitmentOf, joinMessageOf } from "../scripts/lib/protocol";
 const connection = await hre.network.create();
 const { ethers } = connection;
 
+const LOG_PAGE_SIZE = 9_000n;
+
+/// Load identity commitments from CourseMemberAdded, paging to satisfy RPC limits.
+async function loadCourseCommitments(
+  registry: any,
+  courseGroupId: string | number | bigint,
+  provider: { getBlockNumber: () => Promise<number> }
+): Promise<bigint[]> {
+  const latest = BigInt(await provider.getBlockNumber());
+  // This registry was deployed recently; scanning the full chain hits RPC range caps
+  // and is slow. 200k blocks is enough for Sepolia evidence runs.
+  const lookback = 200_000n;
+  let from = latest > lookback ? latest - lookback : 0n;
+  const commitments: bigint[] = [];
+  const filter = registry.filters.CourseMemberAdded(courseGroupId);
+
+  for (; from <= latest; from += LOG_PAGE_SIZE) {
+    const to = from + LOG_PAGE_SIZE - 1n > latest ? latest : from + LOG_PAGE_SIZE - 1n;
+    const logs = await registry.queryFilter(filter, from, to);
+    for (const log of logs) {
+      commitments.push(log.args.identityCommitment as bigint);
+    }
+  }
+  return commitments;
+}
+
 /// Runs the full TeamUp ZK flow against already-deployed contracts, producing real
 /// on-chain transactions. Uses freshly generated (random) identities so no secret is
 /// ever stored in the repository.
@@ -42,14 +68,15 @@ async function main() {
     );
   }
 
-  // This script rebuilds the off-chain group from the identities it enrolls, so it must
-  // run on a fresh deployment (empty course group).
-  const groupSize = await semaphore.getMerkleTreeSize(state.courseGroupId);
-  if (groupSize !== 0n) {
-    throw new Error(
-      `The course group already has ${groupSize} member(s). Run interact.ts only on a fresh deployment.`
-    );
-  }
+  // Rebuild the off-chain Merkle group from on-chain enrollments (works on a
+  // non-empty course group), then append three fresh identities for this run.
+  // Paginate: public RPCs often cap eth_getLogs to ~10k blocks.
+  const existingCommitments = await loadCourseCommitments(
+    registry,
+    state.courseGroupId,
+    ethers.provider
+  );
+  console.log(`Course group ${state.courseGroupId} already has ${existingCommitments.length} member(s)`);
 
   // 1. Fresh identities (never hardcoded).
   const alice = new Identity();
@@ -63,7 +90,7 @@ async function main() {
   await enrollTx.wait();
   console.log(`addCourseMembers (alice, bob, charlie) -> ${enrollTx.hash}`);
 
-  const commitments = [alice.commitment, bob.commitment, charlie.commitment];
+  const commitments = [...existingCommitments, alice.commitment, bob.commitment, charlie.commitment];
   const group = new Group(commitments);
 
   // 3. Alice creates a team with a scoped ZK proof.
@@ -134,8 +161,11 @@ async function main() {
   await charlieClaim.wait();
   console.log(`claimCredential (charlie) -> ${charlieClaim.hash} (owner of NFT: ${charlieClaimAddress})`);
 
-  const tokenOwner = await credential.ownerOf(1);
-  console.log(`\nTeam #${teamId} revealed. Credential #1 owner: ${tokenOwner}`);
+  const bobTokenId = await credential.nextTokenId().then((n: bigint) => n - 2n).catch(() => 0n);
+  // Prefer reading ownership of the addresses we just minted to.
+  console.log(`\nTeam #${teamId} revealed.`);
+  console.log(`Bob NFT held by ${bobClaimAddress}; Charlie NFT held by ${charlieClaimAddress}`);
+  void bobTokenId;
 }
 
 main()

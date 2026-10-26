@@ -108,7 +108,7 @@ make sepolia-create       # step 2: create team
 make sepolia-apply-bob    # step 3: Bob applies
 make sepolia-accept-bob   # step 4: accept Bob
 make sepolia-apply-charlie # step 5: Charlie applies
-make sepolia-accept-charlie# step 6: accept Charlie
+make sepolia-accept-charlie # step 6: accept Charlie
 make sepolia-reveal       # step 7: reveal roster
 make sepolia-claim-bob    # step 8: Bob claims NFT
 make sepolia-claim-charlie # step 9: Charlie claims NFT

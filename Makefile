@@ -16,7 +16,11 @@ endif
 .PHONY: help install setup test test-contracts test-frontend coverage \
 	check build compile lint typecheck \
 	node demo deploy-local interact-local sync abis frontend \
-	deploy verify verify-all interact testnet slither gas
+	deploy verify verify-all interact testnet slither gas \
+	sepolia sepolia-contracts sepolia-enroll sepolia-create \
+	sepolia-apply-bob sepolia-accept-bob sepolia-apply-charlie \
+	sepolia-accept-charlie sepolia-reveal sepolia-claim-bob \
+	sepolia-claim-charlie sepolia-nft
 
 help:
 	$(info TeamUp ZK)
@@ -46,6 +50,20 @@ help:
 	$(info   make verify-all       Verify own + Semaphore stack)
 	$(info   make interact         Full flow (prints tx hashes))
 	$(info   make testnet          deploy + verify + interact)
+	$(info )
+	$(info Showcase (Sepolia txs))
+	$(info   make sepolia          All steps in order)
+	$(info   make sepolia-contracts   Contract addresses)
+	$(info   make sepolia-enroll      Step 1: enroll members)
+	$(info   make sepolia-create      Step 2: create team)
+	$(info   make sepolia-apply-bob   Step 3: Bob applies)
+	$(info   make sepolia-accept-bob  Step 4: accept Bob)
+	$(info   make sepolia-apply-charlie  Step 5: Charlie applies)
+	$(info   make sepolia-accept-charlie Step 6: accept Charlie)
+	$(info   make sepolia-reveal      Step 7: reveal roster)
+	$(info   make sepolia-claim-bob   Step 8: Bob claims NFT)
+	$(info   make sepolia-claim-charlie Step 9: Charlie claims NFT)
+	$(info   make sepolia-nft         Verify NFT ownership)
 	@exit 0
 
 install:
@@ -135,3 +153,41 @@ interact:
 	$(PNPM) run interact:sepolia
 
 testnet: deploy verify interact
+
+# ---- Showcase (Sepolia) ----
+sepolia: sepolia-contracts sepolia-enroll sepolia-create sepolia-apply-bob \
+         sepolia-accept-bob sepolia-apply-charlie sepolia-accept-charlie \
+         sepolia-reveal sepolia-claim-bob sepolia-claim-charlie sepolia-nft
+
+sepolia-contracts:
+	bash showcase/00-contracts.sh
+
+sepolia-enroll:
+	bash showcase/01-enroll.sh
+
+sepolia-create:
+	bash showcase/02-create-team.sh
+
+sepolia-apply-bob:
+	bash showcase/03-apply-bob.sh
+
+sepolia-accept-bob:
+	bash showcase/04-accept-bob.sh
+
+sepolia-apply-charlie:
+	bash showcase/05-apply-charlie.sh
+
+sepolia-accept-charlie:
+	bash showcase/06-accept-charlie.sh
+
+sepolia-reveal:
+	bash showcase/07-reveal.sh
+
+sepolia-claim-bob:
+	bash showcase/08-claim-bob.sh
+
+sepolia-claim-charlie:
+	bash showcase/09-claim-charlie.sh
+
+sepolia-nft:
+	bash showcase/10-nft-verify.sh

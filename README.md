@@ -51,21 +51,21 @@ Deployer: [`0x01BE2966…57aeA`](https://sepolia.etherscan.io/address/0x01BE2966
 Check NFT ownership on `TeamCredential` → Read contract → `ownerOf(tokenId)`
 (e.g. `1`, `2`).
 
-### On-chain evidence — Team #0
+### On-chain evidence — Team #1
 
 | Step | Transaction |
 |---|---|
-| Enroll members | [tx](https://sepolia.etherscan.io/tx/0x90d063d0bf424bbd1ce6f52524e7707e4ed392b166d61a4025735bbe47f738f4) |
-| Create team | [tx](https://sepolia.etherscan.io/tx/0x7ff3ad2fd31615ea45581edd88572c4d4a73395b8873d4fba3d59b93d65ad48e) |
-| Bob applies | [tx](https://sepolia.etherscan.io/tx/0x9f02c4c49bbbfa56ee239e074c99a6bf0e808d627fa6a173f494803644c8e381) |
-| Accept Bob | [tx](https://sepolia.etherscan.io/tx/0xe4e06e63ac1b4f4465d4a2ebad55ff1a4461d0908db3118b030a8f6906c392ea) |
-| Charlie applies | [tx](https://sepolia.etherscan.io/tx/0xd2c2aa92c290542cc45a98b583eb75757a2297e8fa6d9e387d6d4179c7e69e77) |
-| Accept Charlie | [tx](https://sepolia.etherscan.io/tx/0xd87993c6c0c40f325dfe338278f991111770951643c80ac9cf41bd7b0544d384) |
-| Reveal roster | [tx](https://sepolia.etherscan.io/tx/0xae697fa823df12754c8c63f04e65d72eba33bfaff8eb57c83c844f8110cda68d) |
-| Bob claims NFT → [`0xD49E…8Ae8`](https://sepolia.etherscan.io/address/0xD49E2E181ED2d76B280E21d6F7CD8e4162358Ae8) | [tx](https://sepolia.etherscan.io/tx/0xabdd53c0c0f6af9610ab4643cf97b758fa01244ad5e65d527aa56388bd6c4f73) |
-| Charlie claims NFT → [`0xeA48…F06E`](https://sepolia.etherscan.io/address/0xeA487ed36C155695C765D3e7DC9201c0b3f1F06E) | [tx](https://sepolia.etherscan.io/tx/0xa934b28898664f23f4144830942b58f9b44246b446649c2caff40c392b1563d6) |
+| Enroll members | [tx](https://sepolia.etherscan.io/tx/0xdbce8248b0984abde2d501fc9ae2dd5d3a71cd8c27398d969561ce6fdc23162b) |
+| Create team | [tx](https://sepolia.etherscan.io/tx/0xc83d80e0172ceb485995403a2eaaefa611d94c8f261653c802169b820ad86534) |
+| Bob applies | [tx](https://sepolia.etherscan.io/tx/0x1ef50695dc2b010ff3b7c66ffe04062b1fa3c752ea7ceabb1405f944d2d5fda3) |
+| Accept Bob | [tx](https://sepolia.etherscan.io/tx/0x5dd69a7427f0f0c0379c17afed8e1ba3327597e4d56386f0e95ea308419cd457) |
+| Charlie applies | [tx](https://sepolia.etherscan.io/tx/0x87b9a58be1085a1ed5d2adebc5b76281b9047cee83e9f6845d66d5f66f2ac00f) |
+| Accept Charlie | [tx](https://sepolia.etherscan.io/tx/0x15cbc82070ce12e5341ce26a7195603f93de07648a62012413c3479da1c59823) |
+| Reveal roster | [tx](https://sepolia.etherscan.io/tx/0x1717cf7a24d4768fcd01073529944c6ac2f3166ff81ccb9eb80c2409c6225d48) |
+| Bob claims NFT → [`0xD49E…8Ae8`](https://sepolia.etherscan.io/address/0xDf409B20C5C78a941fD3F42F44Ffba9c36D5D622) | [tx](https://sepolia.etherscan.io/tx/0x79d9d24a569008ba368c4616f925c2731ec953e7d1820acb195f7d7586cc45de) |
+| Charlie claims NFT → [`0xeA48…F06E`](https://sepolia.etherscan.io/address/0xeB32ACd8254D017256717E2ca2762D392F77c648) | [tx](https://sepolia.etherscan.io/tx/0xcafb93a6945ce5ed76d1a453cf82b6200f6a64784ff9be7a394f5b545858747e) |
 
-`rosterRoot` after reveal: `0xe803f6166e028d6a47d99daea2db12b34fe92693b5817f793108320dad57c2ac`
+`rosterRoot` after reveal: `0x8d0d797cbde00614745127d232ccc451c2d88ff6ec2b2bb3e2a294f6266bd73c`
 
 Full copy (same data): [`contracts/deployed.md`](contracts/deployed.md).
 
@@ -95,6 +95,28 @@ make frontend         # http://localhost:3000
 ```bash
 make help             # all targets
 ```
+
+### Sepolia showcase (for the demo video)
+
+Each step of the on-chain flow has its own script and make target. Run them one at a
+time during the demo, or all at once:
+
+```bash
+make sepolia              # all steps in order
+make sepolia-contracts    # contract addresses (verified on Etherscan)
+make sepolia-enroll       # step 1: enroll members
+make sepolia-create       # step 2: create team
+make sepolia-apply-bob    # step 3: Bob applies
+make sepolia-accept-bob   # step 4: accept Bob
+make sepolia-apply-charlie # step 5: Charlie applies
+make sepolia-accept-charlie# step 6: accept Charlie
+make sepolia-reveal       # step 7: reveal roster
+make sepolia-claim-bob    # step 8: Bob claims NFT
+make sepolia-claim-charlie # step 9: Charlie claims NFT
+make sepolia-nft          # verify NFT ownership (ownerOf(1), ownerOf(2))
+```
+
+Each target prints the transaction hash and the Etherscan link for that step.
 
 More detail: [`contracts/README.md`](contracts/README.md) · [`frontend/README.md`](frontend/README.md).
 

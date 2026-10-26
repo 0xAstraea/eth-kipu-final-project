@@ -1,11 +1,10 @@
 # Gas cost analysis — TeamUp ZK
 
 All numbers from Hardhat in-process, solc 0.8.28, `optimizer.runs = 200`.
-Harness: `contracts/scripts/`. Raw data: `contracts/gas-snapshot.json`.
+Harness: `scripts/`. Raw data: `gas-snapshot.json`.
 Current code = column **applied** (`bash scripts/gas-run.sh applied`).
 
 ```bash
-cd contracts
 pnpm run gas
 node scripts/gas-compare.mjs baseline applied
 ```

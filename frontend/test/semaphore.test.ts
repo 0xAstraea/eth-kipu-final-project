@@ -7,7 +7,7 @@ const SNARK_FIELD_SIZE =
 
 /**
  * Canonical values, pinned on both sides of the wire.
- * contracts/test/protocol-values.test.ts asserts the same constants with ethers.
+ * test/protocol-values.test.ts asserts the same constants with ethers.
  * If either implementation drifts, one of the two suites fails.
  */
 const ADDRESS = "0x59F26b2b8cFaFC2b194B3b26cf0ba4dCa04a7537";

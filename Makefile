@@ -1,6 +1,6 @@
 # TeamUp ZK — common tasks
 # Requires: Node 20+, pnpm, GNU Make
-# Testnet: fill contracts/.env (see contracts/.env.example)
+# Testnet: fill .env (see .env.example)
 
 PNPM ?= pnpm
 
@@ -70,11 +70,11 @@ install:
 	$(PNPM) install
 
 setup: install
-	@if [ ! -f contracts/.env ]; then \
-		cp contracts/.env.example contracts/.env; \
-		echo "Created contracts/.env — fill SEPOLIA_RPC_URL, DEPLOYER_PRIVATE_KEY, ETHERSCAN_API_KEY"; \
+	@if [ ! -f .env ]; then \
+		cp .env.example .env; \
+		echo "Created .env — fill SEPOLIA_RPC_URL, DEPLOYER_PRIVATE_KEY, ETHERSCAN_API_KEY"; \
 	else \
-		echo "contracts/.env already exists"; \
+		echo ".env already exists"; \
 	fi
 	@if [ ! -f frontend/.env.local ]; then \
 		cp frontend/.env.example frontend/.env.local; \
@@ -111,7 +111,7 @@ build:
 	$(PNPM) run build
 
 slither:
-	cd contracts && slither . --filter-paths "node_modules|openzeppelin|semaphore|poseidon"
+	slither . --filter-paths "node_modules|openzeppelin|semaphore|poseidon"
 
 gas:
 	$(PNPM) run gas
@@ -135,21 +135,21 @@ sync: abis
 	$(PNPM) run sync:frontend-env
 
 frontend:
-	$(PNPM) --filter @teamup/frontend dev
+	$(PNPM) run dev
 
 deploy:
-	@test -f contracts/.env || (echo "Missing contracts/.env — run: make setup" && exit 1)
+	@test -f .env || (echo "Missing .env — run: make setup" && exit 1)
 	$(PNPM) run deploy:sepolia
 
 verify:
-	@test -f contracts/.env || (echo "Missing contracts/.env — run: make setup" && exit 1)
+	@test -f .env || (echo "Missing .env — run: make setup" && exit 1)
 	$(PNPM) run verify:sepolia
 
 verify-all: verify
-	cd contracts && $(PNPM) run verify:deps
+	$(PNPM) run verify:deps
 
 interact:
-	@test -f contracts/.env || (echo "Missing contracts/.env — run: make setup" && exit 1)
+	@test -f .env || (echo "Missing .env — run: make setup" && exit 1)
 	$(PNPM) run interact:sepolia
 
 testnet: deploy verify interact

@@ -102,7 +102,7 @@ registry mints; credential accepts only its fixed registry.
   credential `mint` only from registry.
 - **Custom errors** and **events** on every state change.
 - No `tx.origin`, `delegatecall`, or `selfdestruct`.
-- Slither triage: [`contracts/security/slither-report.md`](contracts/security/slither-report.md).
+- Slither triage: [`security/slither-report.md`](security/slither-report.md).
 
 ## 8. Gas
 
@@ -112,7 +112,7 @@ registry mints; credential accepts only its fixed registry.
 - `unchecked` on safe counters; `calldata` for external args; transient reentrancy guard.
 - Batch enroll via `addCourseMembers`.
 - Reuse Semaphore stack across deploys.
-- Numbers: [`contracts/GAS-OPTIMIZATION-REPORT.md`](contracts/GAS-OPTIMIZATION-REPORT.md).
+- Numbers: [`GAS-OPTIMIZATION-REPORT.md`](GAS-OPTIMIZATION-REPORT.md).
 
 ## 9. Tests
 

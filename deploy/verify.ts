@@ -87,7 +87,7 @@ async function main() {
         address: target.address,
         constructorArgs: target.args,
         contract: target.contract,
-        librariesPath: target.libraries ? librariesPath : undefined
+        librariesPath: "libraries" in target && target.libraries ? librariesPath : undefined
       });
       console.log(`submitted ${target.label} ${target.address}`);
     } catch (error: any) {

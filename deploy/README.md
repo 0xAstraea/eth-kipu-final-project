@@ -71,7 +71,7 @@ make frontend
 ### Own MetaMask as course owner
 
 ```bash
-# contracts/.env
+# .env
 OWNER_ADDRESS=0xYourMetaMaskAccount
 ```
 

@@ -4,7 +4,7 @@ import { configVariable, type HardhatUserConfig } from "hardhat/config";
 
 // Hardhat 3 does not load .env files automatically. Load it (if present) so
 // configVariable and the deploy scripts can read SEPOLIA_RPC_URL, DEPLOYER_PRIVATE_KEY,
-// ETHERSCAN_API_KEY and OWNER_ADDRESS from contracts/.env.
+// ETHERSCAN_API_KEY and OWNER_ADDRESS from .env.
 if (existsSync(".env")) {
   process.loadEnvFile(".env");
 }

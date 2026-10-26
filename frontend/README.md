@@ -44,7 +44,7 @@ pnpm test                                  # full repo (62)
 pnpm --filter @teamup/frontend test        # frontend only (16)
 ```
 
-Tests lock shared hash values with `contracts/test/protocol-values.test.ts`.
+Tests lock shared hash values with `test/protocol-values.test.ts`.
 
 ## Build notes
 

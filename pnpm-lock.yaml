@@ -6,9 +6,7 @@ settings:
 
 importers:
 
-  .: {}
-
-  contracts:
+  .:
     dependencies:
       '@openzeppelin/contracts':
         specifier: ^5.6.1

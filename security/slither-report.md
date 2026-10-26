@@ -10,9 +10,9 @@
 
 - **Scope:** `TeamRegistry.sol`, `TeamCredential.sol` (deps filtered out)
 - **Raw output:** not versioned; regenerate with the command above
-- **Note:** pnpm needs `@zk-kit/lean-imt.sol` and `poseidon-solidity` as contracts
+- **Note:** pnpm needs `@zk-kit/lean-imt.sol` and `poseidon-solidity` as root
   devDependencies so Slither can compile Semaphore imports
-- **Last run:** 2026-10-20 — 33 contracts, 102 detectors, **3 findings** (all false positives)
+- **Last run:** 2026-10-25 — 43 contracts, 102 detectors, **3 findings** (all false positives)
 
 ## Summary
 

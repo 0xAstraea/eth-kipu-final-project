@@ -1,5 +1,4 @@
 packages:
-  - contracts
   - frontend
 
 # Dependencies whose postinstall scripts are allowed to run.

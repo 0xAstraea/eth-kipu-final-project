@@ -67,30 +67,65 @@ Check NFT ownership on `TeamCredential` → Read contract → `ownerOf(tokenId)`
 
 `rosterRoot` after reveal: `0x8d0d797cbde00614745127d232ccc451c2d88ff6ec2b2bb3e2a294f6266bd73c`
 
-Full copy (same data): [`contracts/deployed.md`](contracts/deployed.md).
+Full copy (same data): [`deployed.md`](deployed.md).
 
 ---
+
+## Architecture
+
+| Contract | Role |
+|---|---|
+| `Semaphore` (PSE, external) | Course group + ZK membership verification |
+| `TeamRegistry` (ours) | Course enrollment, teams, applications, reveal, claim |
+| `TeamCredential` (ours, ERC-721) | Membership NFT, minted only by the registry |
+
+`TeamRegistry` calls `ISemaphore` instead of inheriting it, so the public
+`addMember` cannot bypass the course owner. The registry mints through
+`ITeamCredential`; the credential accepts only its immutable registry.
+The teacher owns the course group; applications are stored by nullifier, never
+by `msg.sender`.
+
+Contract-to-contract interactions: `TeamRegistry` → `Semaphore` (`createGroup`,
+`addMember(s)`, `validateProof`) and `TeamRegistry` → `TeamCredential` (`mint`).
 
 ## Repository
 
 | Path | Role |
 |---|---|
-| [`contracts/`](contracts/) | `TeamRegistry`, `TeamCredential`, Hardhat tests, Slither, deploy |
+| [`contracts/`](contracts/) | Solidity source (`TeamRegistry`, `TeamCredential`, interface) |
+| [`test/`](test/) | Hardhat + Mocha unit tests and ZK helpers |
+| [`deploy/`](deploy/) | Deploy, verify and on-chain interaction scripts |
+| [`scripts/`](scripts/) | Demo, gas tools, ABI and frontend-env sync |
+| [`security/`](security/) | Slither report and findings triage |
 | [`frontend/`](frontend/) | Next.js 16 + wagmi 3 · ZK proofs in the browser |
 | [`WHITEPAPER.md`](WHITEPAPER.md) | Problem, threat model, crypto, roadmap |
+| [`CONTRACTS.md`](CONTRACTS.md) | Contract-level architecture and design notes |
 
-## Build and test
+## Install, compile and test
 
-Node 20+, [pnpm](https://pnpm.io), optional [GNU Make](https://www.gnu.org/software/make/).
+Requirements: Node 20+, [pnpm](https://pnpm.io), optional
+[GNU Make](https://www.gnu.org/software/make/). Copy `.env.example` to `.env`
+before deploying to Sepolia; tests and local demos do not need it.
 
 ```bash
-make setup            # pnpm install + .env examples
-make test             # 62 tests (46 contracts + 16 frontend)
-make coverage         # 100% lines/statements on own Solidity
-make slither          # → contracts/security/slither-report.md
-make build
-make frontend         # http://localhost:3000
+pnpm install              # or: make setup (install + .env files)
+pnpm run compile          # or: make compile
+
+pnpm test                 # 62 tests (46 contracts + 16 frontend)
+pnpm run test:contracts   # contract suite only
+pnpm run coverage         # 100% lines/statements on own Solidity
+pnpm run typecheck
+pnpm run lint
 ```
+
+Static analysis (Slither 0.11.6):
+
+```bash
+uv tool install slither-analyzer
+slither . --filter-paths "node_modules|openzeppelin|semaphore|poseidon"
+```
+
+Triage and accepted findings: [`security/slither-report.md`](security/slither-report.md).
 
 ```bash
 make help             # all targets
@@ -117,7 +152,7 @@ make sepolia-nft          # verify NFT ownership (ownerOf(1), ownerOf(2))
 
 Each target prints the transaction hash and the Etherscan link for that step.
 
-More detail: [`contracts/README.md`](contracts/README.md) · [`frontend/README.md`](frontend/README.md).
+More detail: [`CONTRACTS.md`](CONTRACTS.md) · [`deploy/README.md`](deploy/README.md) · [`frontend/README.md`](frontend/README.md).
 
 ## Local demo
 
@@ -126,3 +161,42 @@ make node                                                    # terminal 1
 make deploy-local && make interact-local && make sync        # terminal 2
 make frontend                                                # terminal 3 — MetaMask → localhost:31337
 ```
+
+Or with pnpm directly:
+
+```bash
+pnpm run node
+pnpm run deploy:localhost
+pnpm run interact:localhost
+pnpm run sync:frontend-env
+pnpm run dev
+```
+
+The frontend needs an injected wallet (e.g. MetaMask) on chain `31337`
+(localhost) or `11155111` (Sepolia). Enroll students as the course owner, create
+or join a team with an in-browser Semaphore proof, accept by nullifier, reveal,
+and claim the NFT.
+
+## Known MVP limitations
+
+1. **Statistical anonymity.** Teams of 1–2 members are not anonymous
+   (Semaphore documentation).
+2. **Transaction sender is public.** A relayer is required to hide `msg.sender`
+   at the network level; the contract itself never stores it.
+3. **Mempool griefing.** Copying a proof can burn the victim's nullifier.
+   Production deployments should use private relays.
+4. **No economic incentives.** There is no stake or slashing for abandoning a
+   team.
+5. **No off-chain discovery.** Team search, skills matching and chat remain
+   outside the MVP.
+
+## Roadmap
+
+| Phase | Item | Why |
+|---|---|---|
+| 2 | Staking / slashing | Cost for abandoning a team |
+| 2 | Relayer | Hide the sender and prevent mempool griefing |
+| 3 | Blind recruit | Accept by nullifier; reveal at claim |
+| 3 | Cumulative reputation | Participation credentials without public scores |
+| 4 | Off-chain matching | Skills and roles through a subgraph |
+| done | Web UI | Delivered in [`frontend/`](frontend/) |

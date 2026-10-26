@@ -3,8 +3,8 @@
 On-chain team formation with Semaphore ZK membership proofs.
 Students apply by **nullifier**, not by address, and claim an **NFT credential**.
 
-Product analysis and threat model: [`../WHITEPAPER.md`](../WHITEPAPER.md).
-UI: [`../frontend`](../frontend).
+Product analysis and threat model: [`WHITEPAPER.md`](WHITEPAPER.md).
+UI: [`frontend/`](frontend/).
 
 ## Architecture
 
@@ -43,7 +43,7 @@ Applications never store `msg.sender`. Only `claimCommitment`, `accepted`, `clai
 ```bash
 pnpm install                 # from repo root
 pnpm run compile
-pnpm --filter @teamup/contracts test
+pnpm run test:contracts
 pnpm test                    # full repo: 62 tests
 pnpm run coverage            # 100% lines/statements on own code
 ```
@@ -116,7 +116,7 @@ Details: [`GAS-OPTIMIZATION-REPORT.md`](GAS-OPTIMIZATION-REPORT.md).
 | 3 | Blind recruit (stable ownership circuit) |
 | 4 | Cumulative reputation |
 | 5 | Off-chain matching (subgraph) |
-| 6 | ~~Web UI~~ — done (`../frontend`) |
+| 6 | ~~Web UI~~ — done (`frontend/`) |
 
 ## Security checklist
 
@@ -125,3 +125,11 @@ Details: [`GAS-OPTIMIZATION-REPORT.md`](GAS-OPTIMIZATION-REPORT.md).
 - CEI + `ReentrancyGuardTransient`
 - Custom errors + events
 - OZ Ownable / ERC721 / transient guard
+
+### Compiler warning
+
+`solc` reports an EIP-1153 warning from OpenZeppelin's `TransientSlot.sol`
+(used by `ReentrancyGuardTransient`). It is a dependency warning, not project
+code. The guard clears its transient slot at the end of the call, which the
+warning itself identifies as the safe use case. It cannot be removed without
+dropping the OZ transient reentrancy guard, so it is accepted and documented.

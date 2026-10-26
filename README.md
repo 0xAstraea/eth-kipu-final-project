@@ -98,8 +98,7 @@ make help             # all targets
 
 ### Sepolia showcase (for the demo video)
 
-Each step of the on-chain flow has its own script and make target. Run them one at a
-time during the demo, or all at once:
+Each step of the on-chain flow has its own script and make target
 
 ```bash
 make sepolia              # all steps in order

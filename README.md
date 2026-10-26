@@ -151,6 +151,7 @@ make sepolia-nft          # verify NFT ownership (ownerOf(1), ownerOf(2))
 ```
 
 Each target prints the transaction hash and the Etherscan link for that step.
+The recorded run is linked at the end: [Video demo evidence](#video-demo-evidence-make-sepolia).
 
 More detail: [`CONTRACTS.md`](CONTRACTS.md) · [`deploy/README.md`](deploy/README.md) · [`frontend/README.md`](frontend/README.md).
 
@@ -200,3 +201,39 @@ and claim the NFT.
 | 3 | Cumulative reputation | Participation credentials without public scores |
 | 4 | Off-chain matching | Skills and roles through a subgraph |
 | done | Web UI | Delivered in [`frontend/`](frontend/) |
+
+---
+
+## Video demo evidence (make sepolia)
+
+The `make sepolia` output prints the addresses and transaction links below.
+They are repeated here so the video evidence stays clickable.
+
+Network: **Sepolia** (chainId `11155111`)  
+Deployer / course owner:
+[`0x01BE2966b319F9A4177db48cc8cd101922a57aeA`](https://sepolia.etherscan.io/address/0x01BE2966b319F9A4177db48cc8cd101922a57aeA)  
+Course group id: `1`  
+`rosterRoot` after reveal: `0x8d0d797cbde00614745127d232ccc451c2d88ff6ec2b2bb3e2a294f6266bd73c`
+
+| Contract | Address | Verified code |
+|---|---|---|
+| **TeamRegistry** | `0x13B68Fb542359569f626D12F51b2d43cA5044BEC` | [Etherscan](https://sepolia.etherscan.io/address/0x13B68Fb542359569f626D12F51b2d43cA5044BEC#code) |
+| **TeamCredential** | `0x403FB7c8DE68E411A5aAfd08768d3fb70f2261F5` | [Etherscan](https://sepolia.etherscan.io/address/0x403FB7c8DE68E411A5aAfd08768d3fb70f2261F5#code) |
+| Semaphore | `0xBB10e761CDB2dEf868476c427BD168bF6699C691` | [Etherscan](https://sepolia.etherscan.io/address/0xBB10e761CDB2dEf868476c427BD168bF6699C691#code) |
+| SemaphoreVerifier | `0x1eE051c06323d8E28bDebe98a32F1356C4d2cC5a` | [Etherscan](https://sepolia.etherscan.io/address/0x1eE051c06323d8E28bDebe98a32F1356C4d2cC5a#code) |
+| PoseidonT3 | `0x8F53de417555496B1b288ba20f1dCEF76a4a8c4B` | [Etherscan](https://sepolia.etherscan.io/address/0x8F53de417555496B1b288ba20f1dCEF76a4a8c4B#code) |
+
+| Step | Command | Transaction | Result |
+|---|---|---|---|
+| 1 | `make sepolia-enroll` | [`0xdbce8248…162b`](https://sepolia.etherscan.io/tx/0xdbce8248b0984abde2d501fc9ae2dd5d3a71cd8c27398d969561ce6fdc23162b) | Members enrolled |
+| 2 | `make sepolia-create` | [`0xc83d80e0…6534`](https://sepolia.etherscan.io/tx/0xc83d80e0172ceb485995403a2eaaefa611d94c8f261653c802169b820ad86534) | Team #1 created |
+| 3 | `make sepolia-apply-bob` | [`0x1ef50695…fda3`](https://sepolia.etherscan.io/tx/0x1ef50695dc2b010ff3b7c66ffe04062b1fa3c752ea7ceabb1405f944d2d5fda3) | Bob applies by nullifier |
+| 4 | `make sepolia-accept-bob` | [`0x5dd69a74…d457`](https://sepolia.etherscan.io/tx/0x5dd69a7427f0f0c0379c17afed8e1ba3327597e4d56386f0e95ea308419cd457) | Bob accepted |
+| 5 | `make sepolia-apply-charlie` | [`0x87b9a58b…c00f`](https://sepolia.etherscan.io/tx/0x87b9a58be1085a1ed5d2adebc5b76281b9047cee83e9f6845d66d5f66f2ac00f) | Charlie applies by nullifier |
+| 6 | `make sepolia-accept-charlie` | [`0x15cbc820…9823`](https://sepolia.etherscan.io/tx/0x15cbc82070ce12e5341ce26a7195603f93de07648a62012413c3479da1c59823) | Charlie accepted |
+| 7 | `make sepolia-reveal` | [`0x1717cf7a…5d48`](https://sepolia.etherscan.io/tx/0x1717cf7a24d4768fcd01073529944c6ac2f3166ff81ccb9eb80c2409c6225d48) | Roster frozen + `rosterRoot` |
+| 8 | `make sepolia-claim-bob` | [`0x79d9d24a…45de`](https://sepolia.etherscan.io/tx/0x79d9d24a569008ba368c4616f925c2731ec953e7d1820acb195f7d7586cc45de) | NFT → `0xDf409B20C5C78a941fD3F42F44Ffba9c36D5D622` |
+| 9 | `make sepolia-claim-charlie` | [`0xcafb93a6…747e`](https://sepolia.etherscan.io/tx/0xcafb93a6945ce5ed76d1a453cf82b6200f6a64784ff9be7a394f5b545858747e) | NFT → `0xeB32ACd8254D017256717E2ca2762D392F77c648` |
+| 10 | `make sepolia-nft` | [`ownerOf(1)`](https://sepolia.etherscan.io/address/0x403FB7c8DE68E411A5aAfd08768d3fb70f2261F5#readContract) · [`ownerOf(2)`](https://sepolia.etherscan.io/address/0x403FB7c8DE68E411A5aAfd08768d3fb70f2261F5#readContract) | Bob and Charlie own the NFTs |
+
+Full copy (same data): [`deployed.md`](deployed.md).

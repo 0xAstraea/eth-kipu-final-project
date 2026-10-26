@@ -181,14 +181,19 @@ and claim the NFT.
 ## Known MVP limitations
 
 1. **Statistical anonymity.** Teams of 1–2 members are not anonymous
+
    (Semaphore documentation).
 2. **Transaction sender is public.** A relayer is required to hide `msg.sender`
+
    at the network level; the contract itself never stores it.
 3. **Mempool griefing.** Copying a proof can burn the victim's nullifier.
+
    Production deployments should use private relays.
 4. **No economic incentives.** There is no stake or slashing for abandoning a
+
    team.
 5. **No off-chain discovery.** Team search, skills matching and chat remain
+
    outside the MVP.
 
 ## Roadmap
@@ -206,8 +211,8 @@ and claim the NFT.
 
 ## Video demo evidence (make sepolia)
 
-The `make sepolia` output prints the addresses and transaction links below.
-They are repeated here so the video evidence stays clickable.
+The `make sepolia` output prints the addresses and transaction links below. (Repeated as deployed section above, just for clarity sake) They are repeated here so the video evidence stays clickable.  
+
 
 Network: **Sepolia** (chainId `11155111`)  
 Deployer / course owner:
